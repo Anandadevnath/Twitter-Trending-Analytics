@@ -19,26 +19,53 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model, tfidf, scaler, df = load_artifacts()
+models, tfidf, scaler, df = load_artifacts()
 
 class PredictionInput(BaseModel):
     tag: str
     year: int
     tweets: int
     rank: int
+    model_name: str = "Random Forest"
 
 @app.post("/predict")
 def predict(input: PredictionInput):
+    # Select active model or fallback to first available
+    active_model = models.get(input.model_name) or next(iter(models.values()))
     result = predict_comprehensive(
         tag=input.tag,
         year=input.year,
         tweets=input.tweets,
         rank=input.rank,
-        model=model,
+        model=active_model,
         tfidf=tfidf,
         scaler=scaler,
         df=df
     )
+
+    # Compute comparison across all models
+    comparisons = {}
+    for name, m in models.items():
+        try:
+            res = predict_comprehensive(
+                tag=input.tag,
+                year=input.year,
+                tweets=input.tweets,
+                rank=input.rank,
+                model=m,
+                tfidf=tfidf,
+                scaler=scaler,
+                df=df
+            )
+            comparisons[name] = {
+                'category': res['category'],
+                'confidence': res['confidence']
+            }
+        except Exception:
+            pass
+
+    result['comparisons'] = comparisons
+    result['active_model'] = input.model_name
     return result
 
 @app.get("/benchmark")

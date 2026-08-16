@@ -12,14 +12,20 @@ from sklearn.metrics.pairwise import cosine_similarity
 MODEL_DIR = os.path.dirname(__file__)
 
 def load_artifacts():
-    model = joblib.load(os.path.join(MODEL_DIR, 'model.pkl'))
+    models_path = os.path.join(MODEL_DIR, 'models.pkl')
+    if os.path.exists(models_path):
+        models = joblib.load(models_path)
+    else:
+        single_model = joblib.load(os.path.join(MODEL_DIR, 'model.pkl'))
+        models = {'Random Forest': single_model}
+
     tfidf = joblib.load(os.path.join(MODEL_DIR, 'tfidf_vectorizer.pkl'))
     scaler = joblib.load(os.path.join(MODEL_DIR, 'scaler.pkl'))
 
     # Load cleaned dataset for similarity searches
     data_path = os.path.join(MODEL_DIR, 'data', 'twitter-trending-hashtags-cleaned.csv')
     df = pd.read_csv(data_path)
-    return model, tfidf, scaler, df
+    return models, tfidf, scaler, df
 
 def assign_trending_level(tweets):
     if tweets < 100_000:

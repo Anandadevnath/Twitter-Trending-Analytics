@@ -100,6 +100,7 @@ def main():
 
     # Save artifacts
     model_dir = os.path.dirname(__file__)
+    joblib.dump(trained_models, os.path.join(model_dir, 'models.pkl'))
     joblib.dump(best_model, os.path.join(model_dir, 'model.pkl'))
     joblib.dump(tfidf, os.path.join(model_dir, 'tfidf_vectorizer.pkl'))
     joblib.dump(scaler, os.path.join(model_dir, 'scaler.pkl'))

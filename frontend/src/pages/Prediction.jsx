@@ -8,6 +8,10 @@ const SAMPLES = [
   { label: '#TaylorSwift', tag: 'Taylor Swift', year: 2025, tweets: 28000000, rank: 3, icon: '🎬' },
   { label: '#Christmas', tag: 'Christmas', year: 2025, tweets: 950000, rank: 25, icon: '🎄' },
   { label: '#ClimateAction', tag: 'Climate', year: 2026, tweets: 45000, rank: 180, icon: '🌍' },
+  { label: '#Bitcoin', tag: 'Bitcoin', year: 2026, tweets: 12500000, rank: 5, icon: '💰' },
+  { label: '#WorldCup', tag: 'WorldCup', year: 2026, tweets: 45000000, rank: 1, icon: '🏆' },
+  { label: '#CyberSecurity', tag: 'CyberSecurity', year: 2026, tweets: 180000, rank: 65, icon: '🛡️' },
+  { label: '#Halloween', tag: 'Halloween', year: 2025, tweets: 1200000, rank: 18, icon: '🎃' },
 ]
 
 const CATEGORY_COLORS = {
@@ -53,6 +57,7 @@ const LEVEL_META = {
 
 function Prediction() {
   const [form, setForm] = useState({ tag: '', year: 2026, tweets: '', rank: '' })
+  const [selectedModel, setSelectedModel] = useState('Random Forest')
   const [result, setResult] = useState(null)
   const [submittedData, setSubmittedData] = useState(null)
   const [benchmark, setBenchmark] = useState(null)
@@ -67,10 +72,10 @@ function Prediction() {
 
   const handleSampleClick = (s) => {
     setForm({ tag: s.tag, year: s.year, tweets: s.tweets, rank: s.rank })
-    executePredict(s.tag, s.year, s.tweets, s.rank)
+    executePredict(s.tag, s.year, s.tweets, s.rank, selectedModel)
   }
 
-  const executePredict = (tag, year, tweets, rank) => {
+  const executePredict = (tag, year, tweets, rank, modelName = selectedModel) => {
     setLoading(true)
     setError(null)
     setResult(null)
@@ -79,7 +84,8 @@ function Prediction() {
       tag,
       year: Number(year),
       tweets: Number(tweets),
-      rank: Number(rank)
+      rank: Number(rank),
+      model_name: modelName
     })
       .then(res => {
         setResult(res.data)
@@ -89,13 +95,20 @@ function Prediction() {
       .finally(() => setLoading(false))
   }
 
+  const handleModelSwitch = (modelName) => {
+    setSelectedModel(modelName)
+    if (submittedData) {
+      executePredict(submittedData.tag, submittedData.year, submittedData.tweets, submittedData.rank, modelName)
+    }
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.tag || !form.tweets || !form.rank) {
       setError('Please provide all parameters.')
       return
     }
-    executePredict(form.tag, form.year, form.tweets, form.rank)
+    executePredict(form.tag, form.year, form.tweets, form.rank, selectedModel)
   }
 
   const lvlMeta = result ? (LEVEL_META[result.trending_level] || LEVEL_META.Medium) : null
@@ -386,17 +399,18 @@ function Prediction() {
                   <th>Precision</th>
                   <th>Recall</th>
                   <th>F1-Score</th>
-                  <th>Training Time</th>
+                  <th>Live Query Result</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {benchmark.benchmark.map((m, idx) => (
-                  <tr key={idx} style={{ background: m.name === 'Random Forest' ? 'rgba(0, 223, 143, 0.05)' : 'transparent' }}>
+                  <tr key={idx} style={{ background: selectedModel === m.name ? 'rgba(0, 223, 143, 0.05)' : 'transparent' }}>
                     <td>
-                      <strong style={{ color: m.name === 'Random Forest' ? '#00df8f' : '#ededed' }}>
+                      <strong style={{ color: selectedModel === m.name ? '#00df8f' : '#ededed' }}>
                         {m.name}
                       </strong>
-                      {m.name === 'Random Forest' && (
+                      {selectedModel === m.name && (
                         <span style={{
                           marginLeft: '0.5rem',
                           fontSize: '0.65rem',
@@ -412,11 +426,11 @@ function Prediction() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                        <div style={{ flex: 1, minWidth: '80px', height: '6px', background: '#252525', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ flex: 1, minWidth: '70px', height: '6px', background: '#252525', borderRadius: '3px', overflow: 'hidden' }}>
                           <div style={{
                             width: `${m.accuracy}%`,
                             height: '100%',
-                            background: m.name === 'Random Forest' ? '#00df8f' : '#3291ff',
+                            background: selectedModel === m.name ? '#00df8f' : '#3291ff',
                             borderRadius: '3px',
                             transition: 'width 0.8s ease'
                           }} />
@@ -427,7 +441,45 @@ function Prediction() {
                     <td className="font-mono">{m.precision}%</td>
                     <td className="font-mono">{m.recall}%</td>
                     <td className="font-mono">{m.f1_score}%</td>
-                    <td className="font-mono" style={{ color: '#888' }}>{m.latency_ms} ms</td>
+                    <td>
+                      {result?.comparisons?.[m.name] ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{
+                            fontWeight: 600,
+                            color: CATEGORY_COLORS[result.comparisons[m.name].category] || '#fff'
+                          }}>
+                            {result.comparisons[m.name].category}
+                          </span>
+                          <span className="font-mono" style={{ fontSize: '0.75rem', color: '#888' }}>
+                            ({result.comparisons[m.name].confidence}%)
+                          </span>
+                        </div>
+                      ) : (
+                        <span style={{ color: '#555', fontSize: '0.8rem' }}>Run query</span>
+                      )}
+                    </td>
+                    <td>
+                      {selectedModel === m.name ? (
+                        <span style={{ fontSize: '0.75rem', color: '#00df8f', fontWeight: 600 }}>Active</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleModelSwitch(m.name)}
+                          style={{
+                            background: '#222',
+                            border: '1px solid #333',
+                            color: '#ededed',
+                            padding: '0.25rem 0.6rem',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 500
+                          }}
+                        >
+                          Switch
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
