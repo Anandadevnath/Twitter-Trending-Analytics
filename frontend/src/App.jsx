@@ -7,7 +7,7 @@ import About from './pages/About'
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <nav className="navbar">
         <div className="navbar-brand">
           <span className="logo-icon">▲</span>
@@ -18,7 +18,7 @@ function App() {
           <NavLink to="/analytics" className={({isActive}) => isActive ? 'active' : ''}>Analytics</NavLink>
           <NavLink to="/hashtags" className={({isActive}) => isActive ? 'active' : ''}>Hashtags</NavLink>
           <NavLink to="/prediction" className={({isActive}) => isActive ? 'active' : ''}>ML Predict</NavLink>
-          <NavLink to="/about" className={({isActive}) => isActive ? 'active' : ''}>Docs</NavLink>
+          <NavLink to="/about" className={({isActive}) => isActive ? 'active' : ''}>About</NavLink>
         </div>
       </nav>
       <Routes>
@@ -27,6 +27,7 @@ function App() {
         <Route path="/hashtags" element={<Hashtags />} />
         <Route path="/prediction" element={<Prediction />} />
         <Route path="/about" element={<About />} />
+        <Route path="*" element={<Dashboard />} />
       </Routes>
     </BrowserRouter>
   )

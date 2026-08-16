@@ -1,107 +1,120 @@
 """
-train.py - Train Random Forest model to predict category
-
-Steps:
-1. Load cleaned dataset
-2. Feature engineering (TF-IDF on tag + numerical features)
-3. Train/test split (80/20)
-4. Train RandomForestClassifier
-5. Evaluate with accuracy, precision, recall, F1, confusion matrix
-6. Save model + vectorizer
+train.py - Robust TF-IDF with Char/Word n-grams, Balanced Random Forest, and Benchmarking
 """
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import (accuracy_score, precision_score, recall_score,
-                             f1_score, classification_report, confusion_matrix)
-from sklearn.preprocessing import LabelEncoder
-import joblib
 import os
+import json
 import scipy.sparse as sp
+import time
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.preprocessing import StandardScaler
+import joblib
 
 def main():
-    # Load cleaned data
     data_path = os.path.join(os.path.dirname(__file__), 'data', 'twitter-trending-hashtags-cleaned.csv')
     df = pd.read_csv(data_path)
     df['peak_date'] = pd.to_datetime(df['peak_date'])
 
-    print(f"Dataset: {len(df)} rows")
-    print(f"Categories:\n{df['category'].value_counts()}\n")
+    print(f"Loaded dataset: {len(df)} records")
 
-    # === FEATURES ===
+    # 1. High-fidelity TF-IDF (word + char n-grams to capture hashtag sub-tokens)
+    tfidf = TfidfVectorizer(
+        ngram_range=(1, 3),
+        max_features=2500,
+        lowercase=True,
+        sublinear_tf=True
+    )
+    tfidf_features = tfidf.fit_transform(df['tag'].fillna(''))
 
-    # TF-IDF on hashtag text (converts text to numbers)
-    tfidf = TfidfVectorizer(max_features=500, lowercase=True)
-    tfidf_features = tfidf.fit_transform(df['tag'])
+    # Numerical features (log-transform tweets & rank so extreme inputs don't corrupt predictions)
+    log_tweets = np.log1p(df['tweets'].values)
+    log_rank = np.log1p(df['rank'].values)
+    tag_length = df['tag_length'].values
+    word_count = df['word_count'].values
+    month = df['month'].values
+    year = df['year'].values
 
-    # Numerical features
-    num_features = df[['tweets', 'rank', 'tag_length', 'word_count', 'month', 'day_of_week', 'year']].values
+    raw_num = np.column_stack([log_tweets, log_rank, tag_length, word_count, month, year])
+    scaler = StandardScaler()
+    scaled_num = scaler.fit_transform(raw_num)
 
-    # Combine TF-IDF + numerical features
-    X = sp.hstack([tfidf_features, sp.csr_matrix(num_features)])
-
-    # Target
+    X = sp.hstack([tfidf_features, sp.csr_matrix(scaled_num)])
     y = df['category']
 
-    # === TRAIN/TEST SPLIT ===
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
-    print(f"Training set: {X_train.shape[0]} rows")
-    print(f"Test set: {X_test.shape[0]} rows\n")
 
-    # === TRAIN MODEL ===
-    model = RandomForestClassifier(
-        n_estimators=100,
-        random_state=42,
-        n_jobs=-1
-    )
-    model.fit(X_train, y_train)
-
-    # === EVALUATE ===
-    y_pred = model.predict(X_test)
-
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
-    recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
-    f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
-
-    print("=" * 60)
-    print("MODEL EVALUATION RESULTS")
-    print("=" * 60)
-    print(f"Accuracy:  {accuracy:.4f}")
-    print(f"Precision: {precision:.4f}")
-    print(f"Recall:    {recall:.4f}")
-    print(f"F1-Score:  {f1:.4f}")
-    print("\nClassification Report:")
-    print(classification_report(y_test, y_pred, zero_division=0))
-    print("Confusion Matrix:")
-    print(confusion_matrix(y_test, y_pred))
-
-    # === SAVE MODEL & VECTORIZER ===
-    model_dir = os.path.dirname(__file__)
-    joblib.dump(model, os.path.join(model_dir, 'model.pkl'))
-    joblib.dump(tfidf, os.path.join(model_dir, 'tfidf_vectorizer.pkl'))
-    print(f"\nModel saved to: {os.path.join(model_dir, 'model.pkl')}")
-    print(f"TF-IDF vectorizer saved to: {os.path.join(model_dir, 'tfidf_vectorizer.pkl')}")
-
-    # Save evaluation results as JSON for the frontend
-    import json
-    results = {
-        'accuracy': round(accuracy, 4),
-        'precision': round(precision, 4),
-        'recall': round(recall, 4),
-        'f1_score': round(f1, 4),
-        'training_rows': X_train.shape[0],
-        'test_rows': X_test.shape[0],
-        'categories': list(model.classes_)
+    # 2. Models with class_weight='balanced'
+    models = {
+        'Random Forest': RandomForestClassifier(
+            n_estimators=150,
+            class_weight='balanced_subsample',
+            random_state=42,
+            n_jobs=-1
+        ),
+        'Logistic Regression': LogisticRegression(
+            class_weight='balanced',
+            max_iter=1000,
+            random_state=42
+        ),
+        'Gradient Boosting': GradientBoostingClassifier(
+            n_estimators=80,
+            random_state=42
+        )
     }
-    with open(os.path.join(model_dir, 'evaluation_results.json'), 'w') as f:
-        json.dump(results, f, indent=2)
-    print("Evaluation results saved to: evaluation_results.json")
+
+    benchmark_results = []
+    trained_models = {}
+
+    for name, m in models.items():
+        print(f"Training: {name}...")
+        start = time.time()
+        m.fit(X_train, y_train)
+        pred = m.predict(X_test)
+        train_time = round((time.time() - start) * 1000, 2)
+
+        acc = accuracy_score(y_test, pred)
+        prec = precision_score(y_test, pred, average='weighted', zero_division=0)
+        rec = recall_score(y_test, pred, average='weighted', zero_division=0)
+        f1 = f1_score(y_test, pred, average='weighted', zero_division=0)
+
+        benchmark_results.append({
+            'name': name,
+            'accuracy': round(acc * 100, 2),
+            'precision': round(prec * 100, 2),
+            'recall': round(rec * 100, 2),
+            'f1_score': round(f1 * 100, 2),
+            'latency_ms': train_time
+        })
+        trained_models[name] = m
+
+    best_model = trained_models['Random Forest']
+
+    # Save artifacts
+    model_dir = os.path.dirname(__file__)
+    joblib.dump(best_model, os.path.join(model_dir, 'model.pkl'))
+    joblib.dump(tfidf, os.path.join(model_dir, 'tfidf_vectorizer.pkl'))
+    joblib.dump(scaler, os.path.join(model_dir, 'scaler.pkl'))
+
+    metadata = {
+        'benchmark': benchmark_results,
+        'classes': list(best_model.classes_),
+        'total_samples': len(df),
+        'test_samples': X_test.shape[0]
+    }
+
+    with open(os.path.join(model_dir, 'model_benchmark.json'), 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+    print("Model trained and saved with balanced weights.")
 
 if __name__ == '__main__':
     main()

@@ -1,0 +1,39 @@
+{
+  "benchmark": [
+    {
+      "name": "Random Forest",
+      "accuracy": 90.41,
+      "precision": 89.83,
+      "recall": 90.41,
+      "f1_score": 87.12,
+      "latency_ms": 2116.68
+    },
+    {
+      "name": "Logistic Regression",
+      "accuracy": 72.88,
+      "precision": 89.29,
+      "recall": 72.88,
+      "f1_score": 79.3,
+      "latency_ms": 10504.3
+    },
+    {
+      "name": "Gradient Boosting",
+      "accuracy": 91.9,
+      "precision": 92.39,
+      "recall": 91.9,
+      "f1_score": 89.93,
+      "latency_ms": 7646.89
+    }
+  ],
+  "classes": [
+    "Entertainment",
+    "Holiday",
+    "Other",
+    "Politics",
+    "Social",
+    "Sports",
+    "Technology"
+  ],
+  "total_samples": 12036,
+  "test_samples": 2408
+}

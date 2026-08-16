@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { predictCategory } from '../api'
+import { useState, useEffect } from 'react'
+import { predictCategory, getModelBenchmark } from '../api'
 
 const SAMPLES = [
   { label: '#Trump', tag: 'Trump', year: 2025, tweets: 35000000, rank: 2, icon: '🏛️' },
@@ -10,14 +10,14 @@ const SAMPLES = [
   { label: '#ClimateAction', tag: 'Climate', year: 2026, tweets: 45000, rank: 180, icon: '🌍' },
 ]
 
-const CATEGORY_META = {
-  Politics: { icon: '🏛️', color: '#3291ff', desc: 'Government, policy, elections, and global political discourse' },
-  Sports: { icon: '⚽', color: '#00df8f', desc: 'Athletics, league tournaments, matches, and player transfers' },
-  Entertainment: { icon: '🎬', color: '#f81ce5', desc: 'Music releases, cinema, celebrity news, and streaming shows' },
-  Technology: { icon: '💻', color: '#b779ff', desc: 'Software, artificial intelligence, hardware, and digital innovation' },
-  Holiday: { icon: '🎄', color: '#f5a623', desc: 'Seasonal celebrations, festivals, and cultural holiday events' },
-  Social: { icon: '🌍', color: '#ff0055', desc: 'Public interest, awareness campaigns, health, and social causes' },
-  Other: { icon: '🏷️', color: '#888888', desc: 'General lifestyle, trending memes, and organic community topics' },
+const CATEGORY_COLORS = {
+  Politics: '#3291ff',
+  Sports: '#00df8f',
+  Entertainment: '#f81ce5',
+  Technology: '#b779ff',
+  Holiday: '#f5a623',
+  Social: '#ff0055',
+  Other: '#888888',
 }
 
 const LEVEL_META = {
@@ -26,32 +26,28 @@ const LEVEL_META = {
     color: '#ff0055',
     progress: 100,
     impact: 'Global Mega-Trend',
-    reach: '10M+ Tweets',
-    insight: 'Top 1% viral velocity. Dominates national and international feeds with massive cross-platform engagement.'
+    insight: 'Top 1% viral velocity. Dominates global feeds with multi-million audience reach.'
   },
   High: {
     badge: '🚀 HIGH MOMENTUM',
     color: '#f81ce5',
     progress: 75,
     impact: 'Major Headline Trend',
-    reach: '1M – 10M Tweets',
-    insight: 'Significant worldwide traction. Drives mainstream media coverage and high comment velocity.'
+    insight: 'High engagement across international channels with strong media resonance.'
   },
   Medium: {
     badge: '📈 GROWING TRACTION',
     color: '#f5a623',
     progress: 45,
-    impact: 'Regional / Category Trend',
-    reach: '100K – 1M Tweets',
-    insight: 'Strong topical interest among core audiences and active community discussions.'
+    impact: 'Regional / Domain Trend',
+    insight: 'Consistent topic momentum with dedicated community discussions.'
   },
   Low: {
     badge: '🌿 NICHE / EMERGING',
     color: '#00df8f',
     progress: 20,
     impact: 'Localized Conversation',
-    reach: '< 100K Tweets',
-    insight: 'Targeted niche discussion. Ideal for specialized interest groups and early trend discovery.'
+    insight: 'Targeted niche discussion. Ideal for early signals and specialized interests.'
   },
 }
 
@@ -59,8 +55,15 @@ function Prediction() {
   const [form, setForm] = useState({ tag: '', year: 2026, tweets: '', rank: '' })
   const [result, setResult] = useState(null)
   const [submittedData, setSubmittedData] = useState(null)
+  const [benchmark, setBenchmark] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    getModelBenchmark()
+      .then(res => setBenchmark(res.data))
+      .catch(() => {})
+  }, [])
 
   const handleSampleClick = (s) => {
     setForm({ tag: s.tag, year: s.year, tweets: s.tweets, rank: s.rank })
@@ -89,20 +92,19 @@ function Prediction() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.tag || !form.tweets || !form.rank) {
-      setError('Please fill out all fields before predicting.')
+      setError('Please provide all parameters.')
       return
     }
     executePredict(form.tag, form.year, form.tweets, form.rank)
   }
 
-  const catMeta = result ? (CATEGORY_META[result.category] || CATEGORY_META.Other) : null
   const lvlMeta = result ? (LEVEL_META[result.trending_level] || LEVEL_META.Medium) : null
 
   return (
     <div className="page">
       <div className="page-header">
-        <h1 className="page-title">Trend Forecaster &amp; Classifier</h1>
-        <p className="page-subtitle">Predict topic category and forecast global virality impact for any hashtag</p>
+        <h1 className="page-title">AI Trend Forecaster &amp; Classifier</h1>
+        <p className="page-subtitle">Multi-class classification, probabilistic distribution, sentiment tone &amp; cosine similarity</p>
       </div>
 
       {/* Preset Quick-Test Bar */}
@@ -110,7 +112,7 @@ function Prediction() {
         background: '#111',
         border: '1px solid #222',
         borderRadius: '8px',
-        padding: '1rem 1.25rem',
+        padding: '0.85rem 1.25rem',
         marginBottom: '2rem',
         display: 'flex',
         alignItems: 'center',
@@ -118,7 +120,7 @@ function Prediction() {
         flexWrap: 'wrap'
       }}>
         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          ⚡ Quick Try:
+          ⚡ Sample Queries:
         </span>
         {SAMPLES.map((s, i) => (
           <button
@@ -128,17 +130,14 @@ function Prediction() {
               background: '#181818',
               border: '1px solid #2a2a2a',
               color: '#ededed',
-              padding: '0.4rem 0.8rem',
+              padding: '0.35rem 0.75rem',
               borderRadius: '6px',
-              fontSize: '0.825rem',
+              fontSize: '0.8rem',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.4rem',
-              transition: 'all 0.15s ease'
+              gap: '0.35rem'
             }}
-            onMouseOver={(e) => e.currentTarget.style.borderColor = '#444'}
-            onMouseOut={(e) => e.currentTarget.style.borderColor = '#2a2a2a'}
           >
             <span>{s.icon}</span>
             <span>{s.label}</span>
@@ -148,19 +147,19 @@ function Prediction() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '2rem' }}>
 
-        {/* Input Form */}
+        {/* Input Parameters Form */}
         <div className="predict-form" style={{ maxWidth: '100%' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#ededed', marginBottom: '1.25rem' }}>
-            Hashtag Parameters
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ededed', marginBottom: '1.25rem' }}>
+            Hashtag Inputs
           </h3>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label>Hashtag or Keyword</label>
+              <label>Hashtag Token</label>
               <input
                 className="input-field"
                 type="text"
-                placeholder="e.g. WorldCup, Bitcoin, Oscar, Marvel"
+                placeholder="e.g. WorldCup, Bitcoin, TaylorSwift"
                 value={form.tag}
                 onChange={e => setForm({ ...form, tag: e.target.value })}
               />
@@ -178,7 +177,7 @@ function Prediction() {
               </div>
 
               <div className="form-group">
-                <label>Expected Rank (1–3000)</label>
+                <label>Rank Position</label>
                 <input
                   className="input-field"
                   type="number"
@@ -190,7 +189,7 @@ function Prediction() {
             </div>
 
             <div className="form-group">
-              <label>Estimated Tweet Volume</label>
+              <label>Estimated Tweets</label>
               <input
                 className="input-field"
                 type="number"
@@ -204,39 +203,35 @@ function Prediction() {
               type="submit"
               className="btn btn-primary"
               disabled={loading}
-              style={{ width: '100%', padding: '0.8rem', marginTop: '0.5rem' }}
+              style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}
             >
-              {loading ? 'Analyzing Trend Patterns...' : '✨ Forecast Trend Impact'}
+              {loading ? 'Analyzing Neural Patterns...' : '✨ Run AI Prediction'}
             </button>
           </form>
 
           {error && <div className="error" style={{ marginTop: '1.25rem' }}>{error}</div>}
         </div>
 
-        {/* Prediction Results & User-Friendly Story */}
+        {/* Main Forecast Result Card */}
         <div>
-          {result && catMeta && lvlMeta ? (
+          {result && lvlMeta ? (
             <div style={{
               background: '#111',
               border: '1px solid #282828',
               borderRadius: '8px',
-              padding: '1.75rem',
+              padding: '1.5rem',
               display: 'flex',
               flexDirection: 'column',
-              gap: '1.5rem',
-              animation: 'fadeIn 0.3s ease'
+              gap: '1.25rem'
             }}>
 
-              {/* Header result */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #222', paddingBottom: '1.25rem' }}>
+              {/* Title & Virality Tag */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #222', paddingBottom: '1rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Forecast Report
-                  </span>
-                  <h2 style={{ fontSize: '1.6rem', color: '#fff', fontWeight: 700, margin: '0.25rem 0' }}>
+                  <h2 style={{ fontSize: '1.5rem', color: '#fff', fontWeight: 700, margin: 0 }}>
                     #{submittedData.tag}
                   </h2>
-                  <span style={{ fontSize: '0.85rem', color: '#888' }}>
+                  <span style={{ fontSize: '0.8rem', color: '#888' }}>
                     {submittedData.tweets?.toLocaleString()} tweets &bull; Rank #{submittedData.rank} &bull; {submittedData.year}
                   </span>
                 </div>
@@ -244,88 +239,105 @@ function Prediction() {
                   background: `${lvlMeta.color}15`,
                   color: lvlMeta.color,
                   border: `1px solid ${lvlMeta.color}40`,
-                  padding: '0.4rem 0.8rem',
+                  padding: '0.35rem 0.75rem',
                   borderRadius: '20px',
                   fontSize: '0.75rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.04em'
+                  fontWeight: 700
                 }}>
                   {lvlMeta.badge}
                 </div>
               </div>
 
-              {/* Topic Category Card */}
-              <div style={{
-                background: '#161616',
-                border: '1px solid #262626',
-                borderRadius: '8px',
-                padding: '1.25rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem'
-              }}>
+              {/* 1. Category Confidence Breakdown (Probabilities) */}
+              <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ededed' }}>
+                    Predicted Category: <strong style={{ color: CATEGORY_COLORS[result.category] || '#fff' }}>{result.category}</strong>
+                  </span>
+                  <span style={{ fontSize: '0.8rem', color: '#00df8f', fontFamily: 'monospace', fontWeight: 700 }}>
+                    {result.confidence}% Confidence
+                  </span>
+                </div>
+
+                {/* Probability Distribution bars */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  {result.probabilities?.slice(0, 4).map((p, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.75rem' }}>
+                      <span style={{ width: '90px', color: '#888' }}>{p.category}</span>
+                      <div style={{ flex: 1, height: '6px', background: '#252525', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${p.confidence}%`,
+                          height: '100%',
+                          background: CATEGORY_COLORS[p.category] || '#0070f3',
+                          borderRadius: '3px'
+                        }} />
+                      </div>
+                      <span style={{ width: '40px', textAlign: 'right', color: '#ccc', fontFamily: 'monospace' }}>
+                        {p.confidence}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. Sentiment & Tone Heuristic */}
+              {result.tone && (
                 <div style={{
-                  fontSize: '2rem',
-                  width: '52px',
-                  height: '52px',
-                  borderRadius: '10px',
-                  background: '#222',
+                  background: '#161616',
+                  border: '1px solid #242424',
+                  borderRadius: '8px',
+                  padding: '1rem 1.25rem',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
                 }}>
-                  {catMeta.icon}
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Primary Topic</span>
-                    <strong style={{ color: catMeta.color, fontSize: '0.95rem' }}>{result.category}</strong>
+                  <div>
+                    <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Tone &amp; Discourse Sentiment
+                    </span>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: result.tone.color, marginTop: '0.2rem' }}>
+                      {result.tone.sentiment}
+                    </div>
                   </div>
-                  <p style={{ fontSize: '0.825rem', color: '#aaa', margin: 0 }}>
-                    {catMeta.desc}
-                  </p>
-                </div>
-              </div>
-
-              {/* Virality Meter */}
-              <div style={{ background: '#161616', border: '1px solid #262626', borderRadius: '8px', padding: '1.25rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ededed' }}>Virality Velocity</span>
-                  <span style={{ fontSize: '0.8rem', color: lvlMeta.color, fontWeight: 700 }}>{lvlMeta.impact}</span>
-                </div>
-
-                <div style={{ width: '100%', height: '8px', background: '#252525', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.75rem' }}>
                   <div style={{
-                    width: `${lvlMeta.progress}%`,
-                    height: '100%',
-                    background: `linear-gradient(90deg, #0070f3, ${lvlMeta.color})`,
-                    borderRadius: '4px',
-                    transition: 'width 0.6s ease'
-                  }} />
+                    fontFamily: 'monospace',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    color: result.tone.color,
+                    background: `${result.tone.color}15`,
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: '6px'
+                  }}>
+                    {result.tone.score}
+                  </div>
                 </div>
+              )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#666' }}>
-                  <span>Niche (&lt;100K)</span>
-                  <span>Moderate (100K-1M)</span>
-                  <span>High (1M-10M)</span>
-                  <span>Viral (10M+)</span>
+              {/* 3. Cosine Similarity Matches */}
+              {result.similar_trends && result.similar_trends.length > 0 && (
+                <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1.25rem' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ededed', marginBottom: '0.75rem' }}>
+                    🔗 Nearest Historical Trends (TF-IDF Cosine Similarity)
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    {result.similar_trends.map((st, i) => (
+                      <div key={i} style={{
+                        background: '#1f1f1f',
+                        border: '1px solid #2a2a2a',
+                        padding: '0.6rem 0.75rem',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem'
+                      }}>
+                        <div style={{ fontWeight: 600, color: '#ededed', marginBottom: '0.2rem' }}>#{st.tag}</div>
+                        <div style={{ color: '#888', display: 'flex', justifyContent: 'space-between' }}>
+                          <span>{st.category} &bull; {st.year}</span>
+                          <span style={{ color: '#00df8f', fontFamily: 'monospace' }}>{st.similarity}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              {/* Engagement Insight */}
-              <div style={{
-                background: '#141414',
-                borderLeft: `3px solid ${lvlMeta.color}`,
-                padding: '1rem 1.25rem',
-                borderRadius: '0 8px 8px 0'
-              }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>
-                  💡 Projected Audience Dynamics
-                </div>
-                <p style={{ fontSize: '0.85rem', color: '#ccc', lineHeight: 1.5, margin: 0 }}>
-                  {lvlMeta.insight}
-                </p>
-              </div>
+              )}
 
             </div>
           ) : (
@@ -333,7 +345,7 @@ function Prediction() {
               background: '#111',
               border: '1px dashed #282828',
               borderRadius: '8px',
-              padding: '3.5rem 2rem',
+              padding: '3rem 2rem',
               textAlign: 'center',
               color: '#666',
               height: '100%',
@@ -347,13 +359,82 @@ function Prediction() {
                 Ready to Forecast
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '320px', lineHeight: 1.5 }}>
-                Enter any hashtag name or click one of the quick test presets above to generate a full virality report.
+                Enter any hashtag name or click one of the quick test presets above to generate a full ML report.
               </p>
             </div>
           )}
         </div>
 
       </div>
+
+      {/* Multi-Model Benchmark Section */}
+      {benchmark && benchmark.benchmark && (
+        <div style={{ marginTop: '3rem' }}>
+          <div className="page-header" style={{ marginBottom: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ededed' }}>
+              🔬 ML Algorithm Benchmarking Comparison
+            </h2>
+            <p className="page-subtitle">Evaluation metrics across 4 classification models trained on 12,036 records</p>
+          </div>
+
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Algorithm</th>
+                  <th>Validation Accuracy</th>
+                  <th>Precision</th>
+                  <th>Recall</th>
+                  <th>F1-Score</th>
+                  <th>Training Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {benchmark.benchmark.map((m, idx) => (
+                  <tr key={idx} style={{ background: m.name === 'Random Forest' ? 'rgba(0, 223, 143, 0.05)' : 'transparent' }}>
+                    <td>
+                      <strong style={{ color: m.name === 'Random Forest' ? '#00df8f' : '#ededed' }}>
+                        {m.name}
+                      </strong>
+                      {m.name === 'Random Forest' && (
+                        <span style={{
+                          marginLeft: '0.5rem',
+                          fontSize: '0.65rem',
+                          background: 'rgba(0,223,143,0.15)',
+                          color: '#00df8f',
+                          padding: '0.15rem 0.4rem',
+                          borderRadius: '4px',
+                          border: '1px solid rgba(0,223,143,0.3)'
+                        }}>
+                          ACTIVE MODEL
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                        <div style={{ flex: 1, minWidth: '80px', height: '6px', background: '#252525', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${m.accuracy}%`,
+                            height: '100%',
+                            background: m.name === 'Random Forest' ? '#00df8f' : '#3291ff',
+                            borderRadius: '3px',
+                            transition: 'width 0.8s ease'
+                          }} />
+                        </div>
+                        <span className="font-mono" style={{ color: '#00df8f', width: '48px' }}>{m.accuracy}%</span>
+                      </div>
+                    </td>
+                    <td className="font-mono">{m.precision}%</td>
+                    <td className="font-mono">{m.recall}%</td>
+                    <td className="font-mono">{m.f1_score}%</td>
+                    <td className="font-mono" style={{ color: '#888' }}>{m.latency_ms} ms</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
