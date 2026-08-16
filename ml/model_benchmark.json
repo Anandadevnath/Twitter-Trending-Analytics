@@ -6,7 +6,7 @@
       "precision": 89.83,
       "recall": 90.41,
       "f1_score": 87.12,
-      "latency_ms": 2181.06
+      "latency_ms": 2106.34
     },
     {
       "name": "Logistic Regression",
@@ -14,7 +14,7 @@
       "precision": 89.29,
       "recall": 72.88,
       "f1_score": 79.3,
-      "latency_ms": 12544.34
+      "latency_ms": 10738.63
     },
     {
       "name": "Gradient Boosting",
@@ -22,7 +22,7 @@
       "precision": 92.39,
       "recall": 91.9,
       "f1_score": 89.93,
-      "latency_ms": 7890.58
+      "latency_ms": 7763.44
     }
   ],
   "classes": [
@@ -33,6 +33,285 @@
     "Social",
     "Sports",
     "Technology"
+  ],
+  "confusion_matrices": {
+    "Random Forest": [
+      [
+        9,
+        0,
+        70,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        21,
+        6,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        2128,
+        6,
+        0,
+        1,
+        0
+      ],
+      [
+        0,
+        0,
+        70,
+        8,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        20,
+        0,
+        2,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        45,
+        0,
+        0,
+        8,
+        0
+      ],
+      [
+        0,
+        0,
+        12,
+        0,
+        0,
+        0,
+        1
+      ]
+    ],
+    "Logistic Regression": [
+      [
+        45,
+        0,
+        12,
+        3,
+        15,
+        0,
+        5
+      ],
+      [
+        0,
+        27,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        179,
+        6,
+        1612,
+        73,
+        194,
+        5,
+        66
+      ],
+      [
+        9,
+        0,
+        23,
+        28,
+        16,
+        0,
+        2
+      ],
+      [
+        0,
+        0,
+        3,
+        3,
+        13,
+        0,
+        3
+      ],
+      [
+        0,
+        0,
+        25,
+        0,
+        3,
+        25,
+        0
+      ],
+      [
+        0,
+        0,
+        7,
+        1,
+        0,
+        0,
+        5
+      ]
+    ],
+    "Gradient Boosting": [
+      [
+        14,
+        0,
+        65,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        25,
+        2,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        3,
+        2121,
+        0,
+        4,
+        0,
+        7
+      ],
+      [
+        0,
+        0,
+        62,
+        16,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        11,
+        0,
+        10,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        30,
+        0,
+        0,
+        22,
+        1
+      ],
+      [
+        0,
+        0,
+        8,
+        0,
+        0,
+        0,
+        5
+      ]
+    ]
+  },
+  "global_feature_importance": [
+    {
+      "feature": "log_rank",
+      "importance": 15.52
+    },
+    {
+      "feature": "log_tweets",
+      "importance": 14.539
+    },
+    {
+      "feature": "tag_length",
+      "importance": 13.38
+    },
+    {
+      "feature": "month",
+      "importance": 9.388
+    },
+    {
+      "feature": "year",
+      "importance": 5.281
+    },
+    {
+      "feature": "word_count",
+      "importance": 1.796
+    },
+    {
+      "feature": "happy",
+      "importance": 0.791
+    },
+    {
+      "feature": "day",
+      "importance": 0.736
+    },
+    {
+      "feature": "apple",
+      "importance": 0.664
+    },
+    {
+      "feature": "appleevent",
+      "importance": 0.641
+    },
+    {
+      "feature": "bitcoin",
+      "importance": 0.477
+    },
+    {
+      "feature": "easter",
+      "importance": 0.456
+    },
+    {
+      "feature": "mothersday",
+      "importance": 0.423
+    },
+    {
+      "feature": "taylor",
+      "importance": 0.399
+    },
+    {
+      "feature": "fathersday",
+      "importance": 0.396
+    },
+    {
+      "feature": "eidmubarak",
+      "importance": 0.375
+    },
+    {
+      "feature": "perthsanta",
+      "importance": 0.363
+    },
+    {
+      "feature": "worldmentalhealthday",
+      "importance": 0.328
+    },
+    {
+      "feature": "valentinesday",
+      "importance": 0.315
+    },
+    {
+      "feature": "covid",
+      "importance": 0.31
+    }
   ],
   "total_samples": 12036,
   "test_samples": 2408

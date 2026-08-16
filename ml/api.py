@@ -19,7 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-models, tfidf, scaler, df = load_artifacts()
+models, lifespan_regressor, tfidf, scaler, df = load_artifacts()
 
 class PredictionInput(BaseModel):
     tag: str
@@ -38,6 +38,7 @@ def predict(input: PredictionInput):
         tweets=input.tweets,
         rank=input.rank,
         model=active_model,
+        lifespan_regressor=lifespan_regressor,
         tfidf=tfidf,
         scaler=scaler,
         df=df
@@ -53,6 +54,7 @@ def predict(input: PredictionInput):
                 tweets=input.tweets,
                 rank=input.rank,
                 model=m,
+                lifespan_regressor=lifespan_regressor,
                 tfidf=tfidf,
                 scaler=scaler,
                 df=df
@@ -67,6 +69,27 @@ def predict(input: PredictionInput):
     result['comparisons'] = comparisons
     result['active_model'] = input.model_name
     return result
+
+@app.get("/benchmark")
+def get_benchmark():
+    benchmark_path = os.path.join(os.path.dirname(__file__), 'model_benchmark.json')
+    if os.path.exists(benchmark_path):
+        with open(benchmark_path, 'r') as f:
+            return json.load(f)
+    return {"error": "Benchmark data not found. Run train.py first."}
+
+@app.get("/xai/features")
+def get_feature_importance():
+    benchmark_path = os.path.join(os.path.dirname(__file__), 'model_benchmark.json')
+    if os.path.exists(benchmark_path):
+        with open(benchmark_path, 'r') as f:
+            data = json.load(f)
+            return {
+                "global_importance": data.get("global_feature_importance", []),
+                "confusion_matrices": data.get("confusion_matrices", {}),
+                "classes": data.get("classes", [])
+            }
+    return {"error": "XAI metrics not found."}
 
 @app.get("/benchmark")
 def get_benchmark():

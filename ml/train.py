@@ -10,10 +10,10 @@ import scipy.sparse as sp
 import time
 
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 from sklearn.preprocessing import StandardScaler
 import joblib
 
@@ -24,7 +24,12 @@ def main():
 
     print(f"Loaded dataset: {len(df)} records")
 
-    # 1. High-fidelity TF-IDF (word + char n-grams to capture hashtag sub-tokens)
+    # Synthetic Lifespan (hours active based on volume, rank and organic randomness)
+    np.random.seed(42)
+    base_hours = np.log1p(df['tweets'].values) * 3.5 + (200 - np.minimum(df['rank'].values, 200)) * 0.15
+    df['lifespan_hours'] = np.round(np.clip(base_hours + np.random.normal(0, 4, len(df)), 2, 168), 1)
+
+    # 1. High-fidelity TF-IDF
     tfidf = TfidfVectorizer(
         ngram_range=(1, 3),
         max_features=2500,
@@ -33,7 +38,7 @@ def main():
     )
     tfidf_features = tfidf.fit_transform(df['tag'].fillna(''))
 
-    # Numerical features (log-transform tweets & rank so extreme inputs don't corrupt predictions)
+    # Numerical features
     log_tweets = np.log1p(df['tweets'].values)
     log_rank = np.log1p(df['rank'].values)
     tag_length = df['tag_length'].values
@@ -52,7 +57,7 @@ def main():
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    # 2. Models with class_weight='balanced'
+    # 2. Train Classification Models
     models = {
         'Random Forest': RandomForestClassifier(
             n_estimators=150,
@@ -73,6 +78,8 @@ def main():
 
     benchmark_results = []
     trained_models = {}
+    classes_list = sorted(list(df['category'].unique()))
+    confusion_matrices = {}
 
     for name, m in models.items():
         print(f"Training: {name}...")
@@ -96,18 +103,43 @@ def main():
         })
         trained_models[name] = m
 
+        cm = confusion_matrix(y_test, pred, labels=classes_list)
+        confusion_matrices[name] = cm.tolist()
+
+    # 3. Train Lifespan Regressor
+    print("Training Lifespan Regressor (Random Forest Regressor)...")
+    lifespan_regressor = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    y_reg = df['lifespan_hours']
+    X_tr_r, X_te_r, y_tr_r, y_te_r = train_test_split(X, y_reg, test_size=0.2, random_state=42)
+    lifespan_regressor.fit(X_tr_r, y_tr_r)
+
     best_model = trained_models['Random Forest']
+
+    # Extract Global Feature Importance from Random Forest
+    rf_feat_importances = best_model.feature_importances_
+    tfidf_vocab = tfidf.get_feature_names_out()
+    num_feature_names = ['log_tweets', 'log_rank', 'tag_length', 'word_count', 'month', 'year']
+    all_feature_names = list(tfidf_vocab) + num_feature_names
+
+    top_feat_idx = np.argsort(rf_feat_importances)[::-1][:20]
+    global_importance = [
+        {'feature': str(all_feature_names[i]), 'importance': round(float(rf_feat_importances[i]) * 100, 3)}
+        for i in top_feat_idx
+    ]
 
     # Save artifacts
     model_dir = os.path.dirname(__file__)
     joblib.dump(trained_models, os.path.join(model_dir, 'models.pkl'))
     joblib.dump(best_model, os.path.join(model_dir, 'model.pkl'))
+    joblib.dump(lifespan_regressor, os.path.join(model_dir, 'lifespan_regressor.pkl'))
     joblib.dump(tfidf, os.path.join(model_dir, 'tfidf_vectorizer.pkl'))
     joblib.dump(scaler, os.path.join(model_dir, 'scaler.pkl'))
 
     metadata = {
         'benchmark': benchmark_results,
-        'classes': list(best_model.classes_),
+        'classes': classes_list,
+        'confusion_matrices': confusion_matrices,
+        'global_feature_importance': global_importance,
         'total_samples': len(df),
         'test_samples': X_test.shape[0]
     }
@@ -115,7 +147,7 @@ def main():
     with open(os.path.join(model_dir, 'model_benchmark.json'), 'w') as f:
         json.dump(metadata, f, indent=2)
 
-    print("Model trained and saved with balanced weights.")
+    print("Model, lifespan regressor, XAI data & confusion matrices saved.")
 
 if __name__ == '__main__':
     main()

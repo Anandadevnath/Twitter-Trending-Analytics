@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { predictCategory, getModelBenchmark } from '../api'
+import React, { useState, useEffect } from 'react'
+import { predictCategory, getModelBenchmark, getXaiFeatures } from '../api'
 
 const SAMPLES = [
   { label: '#Trump', tag: 'Trump', year: 2025, tweets: 35000000, rank: 2, icon: '🏛️' },
@@ -61,12 +61,17 @@ function Prediction() {
   const [result, setResult] = useState(null)
   const [submittedData, setSubmittedData] = useState(null)
   const [benchmark, setBenchmark] = useState(null)
+  const [xaiData, setXaiData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     getModelBenchmark()
       .then(res => setBenchmark(res.data))
+      .catch(() => {})
+
+    getXaiFeatures()
+      .then(res => setXaiData(res.data))
       .catch(() => {})
   }, [])
 
@@ -158,71 +163,98 @@ function Prediction() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '2rem', alignItems: 'start' }}>
 
-        {/* Input Parameters Form */}
-        <div className="predict-form" style={{ maxWidth: '100%' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ededed', marginBottom: '1.25rem' }}>
-            Hashtag Inputs
-          </h3>
+        {/* Left Column: Input Form & Model Architecture Info */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="predict-form" style={{ maxWidth: '100%' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ededed', marginBottom: '1.25rem' }}>
+              Hashtag Inputs
+            </h3>
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Hashtag Token</label>
-              <input
-                className="input-field"
-                type="text"
-                placeholder="e.g. WorldCup, Bitcoin, TaylorSwift"
-                value={form.tag}
-                onChange={e => setForm({ ...form, tag: e.target.value })}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Year</label>
+                <label>Hashtag Token</label>
                 <input
                   className="input-field"
-                  type="number"
-                  value={form.year}
-                  onChange={e => setForm({ ...form, year: e.target.value })}
+                  type="text"
+                  placeholder="e.g. WorldCup, Bitcoin, TaylorSwift"
+                  value={form.tag}
+                  onChange={e => setForm({ ...form, tag: e.target.value })}
                 />
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="form-group">
+                  <label>Year</label>
+                  <input
+                    className="input-field"
+                    type="number"
+                    value={form.year}
+                    onChange={e => setForm({ ...form, year: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Rank Position</label>
+                  <input
+                    className="input-field"
+                    type="number"
+                    placeholder="e.g. 5"
+                    value={form.rank}
+                    onChange={e => setForm({ ...form, rank: e.target.value })}
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
-                <label>Rank Position</label>
+                <label>Estimated Tweets</label>
                 <input
                   className="input-field"
                   type="number"
-                  placeholder="e.g. 5"
-                  value={form.rank}
-                  onChange={e => setForm({ ...form, rank: e.target.value })}
+                  placeholder="e.g. 5000000"
+                  value={form.tweets}
+                  onChange={e => setForm({ ...form, tweets: e.target.value })}
                 />
               </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={loading}
+                style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}
+              >
+                {loading ? 'Analyzing Neural Patterns...' : '✨ Run AI Prediction'}
+              </button>
+            </form>
+
+            {error && <div className="error" style={{ marginTop: '1.25rem' }}>{error}</div>}
+          </div>
+
+          {/* Model Architecture Info Card */}
+          <div style={{ background: '#111', border: '1px solid #222', borderRadius: '8px', padding: '1.25rem' }}>
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: '#ededed', marginBottom: '0.75rem' }}>
+              ⚙️ Pipeline Architecture
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.75rem', color: '#888' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Text Vectorizer:</span>
+                <span style={{ color: '#ededed', fontFamily: 'monospace' }}>TF-IDF (1-3 n-grams, 2.5k max)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Feature Scaling:</span>
+                <span style={{ color: '#ededed', fontFamily: 'monospace' }}>Log1p + StandardScaler</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Active Model:</span>
+                <span style={{ color: '#00df8f', fontWeight: 600 }}>{selectedModel}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Lifespan Engine:</span>
+                <span style={{ color: '#f5a623', fontFamily: 'monospace' }}>RandomForestRegressor (100 trees)</span>
+              </div>
             </div>
-
-            <div className="form-group">
-              <label>Estimated Tweets</label>
-              <input
-                className="input-field"
-                type="number"
-                placeholder="e.g. 5000000"
-                value={form.tweets}
-                onChange={e => setForm({ ...form, tweets: e.target.value })}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={loading}
-              style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}
-            >
-              {loading ? 'Analyzing Neural Patterns...' : '✨ Run AI Prediction'}
-            </button>
-          </form>
-
-          {error && <div className="error" style={{ marginTop: '1.25rem' }}>{error}</div>}
+          </div>
         </div>
 
         {/* Main Forecast Result Card */}
@@ -346,6 +378,71 @@ function Prediction() {
                           <span>{st.category} &bull; {st.year}</span>
                           <span style={{ color: '#00df8f', fontFamily: 'monospace' }}>{st.similarity}%</span>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Explainable AI: Feature & Token Attribution */}
+              {result.explanation && (
+                <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1.25rem' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ededed', marginBottom: '0.75rem' }}>
+                    🧠 Model Interpretability &amp; Feature Attribution (XAI)
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.5rem' }}>
+                    Sub-token TF-IDF weights contributing to decision:
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                    {result.explanation.tokens?.map((t, idx) => (
+                      <div key={idx} style={{
+                        background: 'rgba(50, 145, 255, 0.1)',
+                        border: '1px solid rgba(50, 145, 255, 0.3)',
+                        borderRadius: '4px',
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.75rem',
+                        display: 'flex',
+                        gap: '0.4rem',
+                        alignItems: 'center'
+                      }}>
+                        <span style={{ color: '#ededed' }}>"{t.token}"</span>
+                        <span style={{ color: '#3291ff', fontFamily: 'monospace', fontWeight: 600 }}>{t.weight}%</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                    {result.explanation.signals?.map((s, idx) => (
+                      <div key={idx} style={{ background: '#1c1c1c', padding: '0.5rem', borderRadius: '4px', fontSize: '0.7rem' }}>
+                        <div style={{ color: '#888' }}>{s.signal}</div>
+                        <div style={{ color: '#ededed', fontWeight: 600, marginTop: '0.1rem' }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 5. Trend Lifespan & Half-Life Forecast */}
+              {result.lifespan && (
+                <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ededed' }}>
+                      ⏳ Trend Lifespan &amp; Decay Forecast (Regression)
+                    </span>
+                    <span style={{ color: '#f5a623', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem' }}>
+                      ~{result.lifespan.expected_active_hours} hrs active
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'flex-end', height: '40px', marginTop: '0.5rem' }}>
+                    {result.lifespan.decay_curve?.map((pt, idx) => (
+                      <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end' }}>
+                        <div style={{
+                          width: '80%',
+                          height: `${Math.max(pt.retention, 5)}%`,
+                          background: '#f5a623',
+                          borderRadius: '2px 2px 0 0',
+                          opacity: 0.8
+                        }} />
+                        <span style={{ fontSize: '0.6rem', color: '#666', marginTop: '0.2rem' }}>{pt.hour}h</span>
                       </div>
                     ))}
                   </div>
@@ -484,6 +581,78 @@ function Prediction() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Confusion Matrix Heatmap Section */}
+      {xaiData && xaiData.confusion_matrices && xaiData.classes && (
+        <div style={{ marginTop: '3rem' }}>
+          <div className="page-header" style={{ marginBottom: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ededed' }}>
+              📊 Model Confusion Matrix Heatmap ({selectedModel})
+            </h2>
+            <p className="page-subtitle">Actual vs Predicted class distribution on 2,408 test validation samples</p>
+          </div>
+
+          <div style={{ background: '#111', border: '1px solid #222', borderRadius: '8px', padding: '1.5rem', overflowX: 'auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `100px repeat(${xaiData.classes.length}, 1fr)`, gap: '4px', minWidth: '600px' }}>
+              {/* Header row */}
+              <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 600, padding: '0.4rem' }}>Actual \ Pred</div>
+              {xaiData.classes.map((cls, idx) => (
+                <div key={idx} style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  color: CATEGORY_COLORS[cls] || '#fff',
+                  textAlign: 'center',
+                  padding: '0.4rem'
+                }}>
+                  {cls.slice(0, 5)}
+                </div>
+              ))}
+
+              {/* Rows */}
+              {xaiData.classes.map((rowCls, rIdx) => {
+                const row = xaiData.confusion_matrices[selectedModel]?.[rIdx] || []
+                const maxVal = Math.max(...row, 1)
+                return (
+                  <React.Fragment key={`row-group-${rIdx}`}>
+                    <div style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      color: CATEGORY_COLORS[rowCls] || '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '0.4rem'
+                    }}>
+                      {rowCls}
+                    </div>
+                    {row.map((val, cIdx) => {
+                      const isDiag = rIdx === cIdx
+                      const intensity = val / maxVal
+                      return (
+                        <div
+                          key={`cell-${rIdx}-${cIdx}`}
+                          title={`Actual: ${rowCls}, Predicted: ${xaiData.classes[cIdx]} (${val} samples)`}
+                          style={{
+                            background: isDiag ? `rgba(0, 223, 143, ${Math.max(intensity, 0.15)})` : (val > 0 ? `rgba(255, 0, 85, ${Math.min(intensity * 0.5, 0.3)})` : '#161616'),
+                            color: isDiag ? '#fff' : (val > 0 ? '#ff8099' : '#444'),
+                            padding: '0.6rem 0.2rem',
+                            textAlign: 'center',
+                            borderRadius: '4px',
+                            fontFamily: 'monospace',
+                            fontSize: '0.75rem',
+                            fontWeight: isDiag ? 700 : 400
+                          }}
+                        >
+                          {val}
+                        </div>
+                      )
+                    })}
+                  </React.Fragment>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}

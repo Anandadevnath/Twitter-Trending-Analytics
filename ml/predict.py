@@ -19,13 +19,16 @@ def load_artifacts():
         single_model = joblib.load(os.path.join(MODEL_DIR, 'model.pkl'))
         models = {'Random Forest': single_model}
 
+    lifespan_path = os.path.join(MODEL_DIR, 'lifespan_regressor.pkl')
+    lifespan_regressor = joblib.load(lifespan_path) if os.path.exists(lifespan_path) else None
+
     tfidf = joblib.load(os.path.join(MODEL_DIR, 'tfidf_vectorizer.pkl'))
     scaler = joblib.load(os.path.join(MODEL_DIR, 'scaler.pkl'))
 
     # Load cleaned dataset for similarity searches
     data_path = os.path.join(MODEL_DIR, 'data', 'twitter-trending-hashtags-cleaned.csv')
     df = pd.read_csv(data_path)
-    return models, tfidf, scaler, df
+    return models, lifespan_regressor, tfidf, scaler, df
 
 def assign_trending_level(tweets):
     if tweets < 100_000:
@@ -76,7 +79,6 @@ def find_similar_hashtags(tag, tfidf, df, top_k=4):
         if len(results) >= top_k:
             break
 
-    # If no textual overlap found, match by top volume in category
     if not results:
         sample_df = df[df['tweets'] > 1_000_000].sample(min(top_k, len(df)))
         results = [{
@@ -89,7 +91,54 @@ def find_similar_hashtags(tag, tfidf, df, top_k=4):
 
     return results
 
-def predict_comprehensive(tag, year, tweets, rank, model, tfidf, scaler, df):
+def explain_prediction(tag, tweets, rank, year, model, tfidf):
+    # Compute local token contribution scores
+    input_vec = tfidf.transform([tag])
+    feature_names = tfidf.get_feature_names_out()
+    non_zero_indices = input_vec.indices
+
+    token_weights = []
+    for idx in non_zero_indices:
+        token = feature_names[idx]
+        weight = float(input_vec[0, idx])
+        token_weights.append({'token': token, 'weight': round(weight * 100, 1)})
+
+    token_weights = sorted(token_weights, key=lambda x: x['weight'], reverse=True)
+
+    # Metadata feature signals
+    meta_signals = [
+        {'signal': 'Volume Velocity (Tweets)', 'value': f"{tweets:,}", 'impact': 'High' if tweets > 5000000 else 'Normal'},
+        {'signal': 'Peak Rank Standing', 'value': f"#{rank}", 'impact': 'Top Tier' if rank <= 10 else 'Broad'},
+        {'signal': 'Year Factor', 'value': str(year), 'impact': 'Current Temporal'}
+    ]
+
+    return {
+        'tokens': token_weights,
+        'signals': meta_signals
+    }
+
+def estimate_lifespan(X, lifespan_regressor, tweets, rank):
+    if lifespan_regressor:
+        pred_hours = float(lifespan_regressor.predict(X)[0])
+    else:
+        # Fallback heuristic
+        pred_hours = float(np.log1p(tweets) * 3.5 + (200 - min(rank, 200)) * 0.15)
+
+    pred_hours = max(2.0, round(pred_hours, 1))
+
+    # Generate decay curve data points for charting: hours vs decay percentage
+    decay_curve = []
+    for h in [0, 6, 12, 24, 48, 72, 96, 120]:
+        retention = max(0.0, round(100.0 * np.exp(-1.5 * h / pred_hours), 1))
+        decay_curve.append({'hour': h, 'retention': retention})
+
+    return {
+        'expected_active_hours': pred_hours,
+        'half_life_hours': round(pred_hours * 0.46, 1),
+        'decay_curve': decay_curve
+    }
+
+def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tfidf, scaler, df):
     # TF-IDF
     tfidf_feat = tfidf.transform([tag])
 
@@ -121,6 +170,8 @@ def predict_comprehensive(tag, year, tweets, rank, model, tfidf, scaler, df):
     trending_lvl = assign_trending_level(tweets)
     tone_info = estimate_tone(tag, tweets)
     similar_trends = find_similar_hashtags(tag, tfidf, df, top_k=4)
+    explanation = explain_prediction(tag, tweets, rank, year, model, tfidf)
+    lifespan = estimate_lifespan(X, lifespan_regressor, tweets, rank)
 
     return {
         'category': pred_class,
@@ -128,5 +179,7 @@ def predict_comprehensive(tag, year, tweets, rank, model, tfidf, scaler, df):
         'trending_level': trending_lvl,
         'probabilities': class_probs,
         'tone': tone_info,
-        'similar_trends': similar_trends
+        'similar_trends': similar_trends,
+        'explanation': explanation,
+        'lifespan': lifespan
     }
