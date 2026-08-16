@@ -9,13 +9,16 @@ function App() {
   return (
     <BrowserRouter>
       <nav className="navbar">
-        <div className="navbar-brand">📊 Twitter Trending Analytics</div>
+        <div className="navbar-brand">
+          <span className="logo-icon">▲</span>
+          <span>Twitter Trend Analytics</span>
+        </div>
         <div className="navbar-links">
           <NavLink to="/" className={({isActive}) => isActive ? 'active' : ''}>Dashboard</NavLink>
           <NavLink to="/analytics" className={({isActive}) => isActive ? 'active' : ''}>Analytics</NavLink>
           <NavLink to="/hashtags" className={({isActive}) => isActive ? 'active' : ''}>Hashtags</NavLink>
-          <NavLink to="/prediction" className={({isActive}) => isActive ? 'active' : ''}>Prediction</NavLink>
-          <NavLink to="/about" className={({isActive}) => isActive ? 'active' : ''}>About</NavLink>
+          <NavLink to="/prediction" className={({isActive}) => isActive ? 'active' : ''}>ML Predict</NavLink>
+          <NavLink to="/about" className={({isActive}) => isActive ? 'active' : ''}>Docs</NavLink>
         </div>
       </nav>
       <Routes>

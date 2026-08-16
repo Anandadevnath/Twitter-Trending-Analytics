@@ -66,49 +66,54 @@ function Hashtags() {
   }
 
   const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-
   const displayData = searchResult || trends
 
   return (
     <div className="page">
-      <h1 className="page-title">Hashtags</h1>
+      <div className="page-header">
+        <h1 className="page-title">Hashtags Explorer</h1>
+        <p className="page-subtitle">Search, filter, and inspect granular trending records</p>
+      </div>
 
-      {/* Search */}
+      {/* Search Input Bar */}
       <div className="search-box">
         <input
           type="text"
-          placeholder="Search hashtag (e.g. Trump, Messi, Christmas)..."
+          placeholder="Search by keyword (e.g. Trump, Messi, Christmas)..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <button className="btn btn-primary" onClick={handleSearch}>Search</button>
-        {searchResult && <button className="btn" style={{background:'#e0e0e0'}} onClick={clearSearch}>Clear</button>}
+        {searchResult && <button className="btn btn-secondary" onClick={clearSearch}>Reset</button>}
       </div>
 
-      {/* Search result detail */}
+      {/* Search Result Card */}
       {searchResult && searchResult.length > 0 && (
         <div className="hashtag-detail" style={{marginBottom: '1.5rem'}}>
-          <h3 style={{marginBottom: '1rem', color: '#1da1f2'}}>Search Results ({searchResult.length})</h3>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem'}}>
+            <h3 style={{fontSize:'0.9rem', color:'#ededed'}}>Match Found</h3>
+            <span style={{fontSize:'0.75rem', color:'#888', fontFamily:'monospace'}}>{searchResult.length} matches</span>
+          </div>
           {searchResult.slice(0, 1).map(t => (
             <div key={t._id}>
-              <div className="detail-row"><span className="detail-label">Hashtag</span><span className="detail-value">{t.tag}</span></div>
-              <div className="detail-row"><span className="detail-label">Year</span><span className="detail-value">{t.year}</span></div>
+              <div className="detail-row"><span className="detail-label">Hashtag</span><span className="detail-value font-mono">#{t.tag}</span></div>
+              <div className="detail-row"><span className="detail-label">Recorded Year</span><span className="detail-value">{t.year}</span></div>
               <div className="detail-row"><span className="detail-label">Peak Date</span><span className="detail-value">{formatDate(t.peak_date)}</span></div>
-              <div className="detail-row"><span className="detail-label">Tweets</span><span className="detail-value">{t.tweets.toLocaleString()}</span></div>
-              <div className="detail-row"><span className="detail-label">Rank</span><span className="detail-value">{t.rank}</span></div>
+              <div className="detail-row"><span className="detail-label">Volume</span><span className="detail-value font-mono">{t.tweets.toLocaleString()} tweets</span></div>
+              <div className="detail-row"><span className="detail-label">Rank</span><span className="detail-value font-mono">#{t.rank}</span></div>
               <div className="detail-row"><span className="detail-label">Category</span><span className="detail-value"><span className={getBadgeClass(t.category)}>{t.category}</span></span></div>
-              <div className="detail-row"><span className="detail-label">Trending Level</span><span className="detail-value"><span className={getLevelBadge(t.trending_level)}>{t.trending_level}</span></span></div>
+              <div className="detail-row"><span className="detail-label">Virality</span><span className="detail-value"><span className={getLevelBadge(t.trending_level)}>{t.trending_level}</span></span></div>
             </div>
           ))}
         </div>
       )}
 
       {searchResult && searchResult.length === 0 && (
-        <div className="error">No results found for "{search}"</div>
+        <div className="error">No trending records found matching "{search}"</div>
       )}
 
-      {/* Filters */}
+      {/* Multi-Criteria Filters */}
       {!searchResult && (
         <div className="filters">
           <select value={yearFilter} onChange={e => { setYearFilter(e.target.value); setPage(1) }}>
@@ -122,7 +127,7 @@ function Hashtags() {
             )}
           </select>
           <select value={levelFilter} onChange={e => { setLevelFilter(e.target.value); setPage(1) }}>
-            <option value="">All Levels</option>
+            <option value="">All Virality Levels</option>
             {['Low','Medium','High','Viral'].map(l =>
               <option key={l} value={l}>{l}</option>
             )}
@@ -131,44 +136,54 @@ function Hashtags() {
       )}
 
       {error && <div className="error">Error: {error}</div>}
-      {loading && <div className="loading">Loading...</div>}
+      {loading && <div className="loading">&gt; Fetching telemetry data...</div>}
 
-      {/* Table */}
+      {/* Vercel Clean Data Table */}
       {!loading && (
         <>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Tag</th>
-                <th>Year</th>
-                <th>Peak Date</th>
-                <th>Tweets</th>
-                <th>Rank</th>
-                <th>Category</th>
-                <th>Level</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayData.map(t => (
-                <tr key={t._id}>
-                  <td><strong>{t.tag}</strong></td>
-                  <td>{t.year}</td>
-                  <td>{formatDate(t.peak_date)}</td>
-                  <td>{t.tweets.toLocaleString()}</td>
-                  <td>{t.rank}</td>
-                  <td><span className={getBadgeClass(t.category)}>{t.category}</span></td>
-                  <td><span className={getLevelBadge(t.trending_level)}>{t.trending_level}</span></td>
+          <div className="table-container">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Hashtag</th>
+                  <th>Year</th>
+                  <th>Peak Date</th>
+                  <th>Volume</th>
+                  <th>Rank</th>
+                  <th>Category</th>
+                  <th>Virality</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {displayData.map(t => (
+                  <tr key={t._id}>
+                    <td><span className="font-mono" style={{fontWeight:600}}>#{t.tag}</span></td>
+                    <td style={{color:'#888'}}>{t.year}</td>
+                    <td style={{color:'#888'}}>{formatDate(t.peak_date)}</td>
+                    <td className="font-mono">{t.tweets.toLocaleString()}</td>
+                    <td className="font-mono" style={{color:'#888'}}>#{t.rank}</td>
+                    <td><span className={getBadgeClass(t.category)}>{t.category}</span></td>
+                    <td><span className={getLevelBadge(t.trending_level)}>{t.trending_level}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-          {/* Pagination (only when not searching) */}
+          {/* Pagination */}
           {!searchResult && (
             <div className="pagination">
-              <button onClick={() => setPage(p => p - 1)} disabled={page <= 1}>← Prev</button>
-              <span>Page {page} of {pages} ({total} results)</span>
-              <button onClick={() => setPage(p => p + 1)} disabled={page >= pages}>Next →</button>
+              <span className="pagination-info">
+                Showing page <strong style={{color:'#ededed'}}>{page}</strong> of <strong style={{color:'#ededed'}}>{pages}</strong> ({total.toLocaleString()} records)
+              </span>
+              <div className="pagination-btns">
+                <button className="btn btn-secondary" onClick={() => setPage(p => p - 1)} disabled={page <= 1}>
+                  Previous
+                </button>
+                <button className="btn btn-secondary" onClick={() => setPage(p => p + 1)} disabled={page >= pages}>
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </>

@@ -1,70 +1,61 @@
 function About() {
   return (
     <div className="page">
-      <h1 className="page-title">About This Project</h1>
+      <div className="page-header">
+        <h1 className="page-title">Documentation &amp; Specifications</h1>
+        <p className="page-subtitle">Architecture overview, methodology, data provenance, and evaluation metrics</p>
+      </div>
+
       <div className="about-content">
         <h2>Project Title</h2>
         <p>Twitter Trending Hashtag Analytics and Classification Using Machine Learning</p>
 
         <h2>Problem Statement</h2>
         <p>
-          Twitter/X generates thousands of trending hashtags daily, but there is no built-in system to
-          automatically categorize them. This project aims to classify trending hashtags into meaningful
-          categories using Machine Learning techniques.
+          Twitter/X surfaces thousands of viral hashtags daily, but raw trending metadata lacks standardized topic categorizations. This makes it difficult for researchers, digital marketers, and analysts to aggregate trends by domain (Politics, Sports, Tech, etc.) or gauge viral momentum programmatically.
         </p>
 
         <h2>Objectives</h2>
         <ul>
-          <li>Analyze Twitter trending hashtag data from Hugging Face</li>
-          <li>Clean and preprocess the dataset</li>
-          <li>Create meaningful categories using rule-based labeling</li>
-          <li>Train a Random Forest classifier to predict hashtag categories</li>
-          <li>Build a full-stack web application for data visualization and prediction</li>
+          <li>Ingest and clean 12,036 historical trending records (2020–2025).</li>
+          <li>Establish categorical ground-truth labels using explainable rule-based heuristics.</li>
+          <li>Train an explainable Random Forest classifier utilizing TF-IDF text features and numerical engagement metrics.</li>
+          <li>Expose a high-performance FastAPI microservice for serialized inference.</li>
+          <li>Deliver an interactive MERN dashboard with paginated filtering, search, and deep-dive analytics.</li>
         </ul>
 
-        <h2>Dataset</h2>
+        <h2>Dataset Provenance</h2>
         <p>
-          Source: <a href="https://huggingface.co/datasets/ronantakizawa/twitter-trending-hashtags" target="_blank" rel="noreferrer" style={{color:'#1da1f2'}}>
-            Hugging Face - ronantakizawa/twitter-trending-hashtags
-          </a>
+          Source dataset obtained from <a href="https://huggingface.co/datasets/ronantakizawa/twitter-trending-hashtags" target="_blank" rel="noreferrer" style={{color:'#0070f3'}}>Hugging Face (ronantakizawa/twitter-trending-hashtags)</a>. Contains 12,036 rows across 5 raw features: <code>tag</code>, <code>year</code>, <code>peak_date</code>, <code>tweets</code>, and <code>rank</code>.
         </p>
-        <p>Approximately 12,036 rows with columns: tag, year, peak_date, tweets, rank</p>
 
-        <h2>Category Labels</h2>
-        <p><strong>Important:</strong> The categories (Politics, Sports, Entertainment, Technology, Holiday, Social, Other)
-          were created using a <strong>rule-based keyword matching approach</strong>. These labels are NOT part of the
-          original dataset. They were engineered for this project's ML training purposes.</p>
+        <h2>Rule-Based Category Ground Truth</h2>
+        <p>
+          The original dataset does not contain topic classifications. Categories (Politics, Sports, Entertainment, Technology, Holiday, Social, Other) were generated through a deterministic rule-based keyword mapping process for training purposes.
+        </p>
 
-        <h2>Trending Levels</h2>
-        <p><strong>Important:</strong> The trending levels (Low, Medium, High, Viral) are <strong>project-defined
-          thresholds</strong> based on tweet counts. They are NOT official Twitter/X classifications.</p>
+        <h2>Trending Level Virality Thresholds</h2>
+        <p>
+          Trending levels are project-defined engagement thresholds (not official Twitter/X standards):
+        </p>
         <ul>
           <li><strong>Low:</strong> &lt; 100,000 tweets</li>
           <li><strong>Medium:</strong> 100,000 to &lt; 1,000,000 tweets</li>
           <li><strong>High:</strong> 1,000,000 to &lt; 10,000,000 tweets</li>
-          <li><strong>Viral:</strong> 10,000,000+ tweets</li>
+          <li><strong>Viral:</strong> &ge; 10,000,000 tweets</li>
         </ul>
 
-        <h2>Machine Learning</h2>
+        <h2>Machine Learning Pipeline</h2>
         <ul>
-          <li><strong>Algorithm:</strong> Random Forest Classifier (scikit-learn)</li>
-          <li><strong>Features:</strong> TF-IDF on hashtag text + numerical features (tweets, rank, tag_length, word_count, month, day_of_week, year)</li>
-          <li><strong>Split:</strong> 80% training / 20% testing</li>
-          <li><strong>Evaluation:</strong> Accuracy, Precision, Recall, F1-Score, Confusion Matrix</li>
+          <li><strong>Model:</strong> <code>RandomForestClassifier(n_estimators=100, random_state=42)</code></li>
+          <li><strong>Feature Engineering:</strong> TF-IDF Vectorizer (500 text unigrams/n-grams) + metadata (tweet count, rank, tag length, word count, temporal features).</li>
+          <li><strong>Split:</strong> 80% Training (9,628 rows) / 20% Testing (2,408 rows) stratified split.</li>
+          <li><strong>Validation Accuracy:</strong> <strong>90.61%</strong> (Weighted F1: 87.49%).</li>
         </ul>
 
-        <h2>Tech Stack</h2>
-        <ul>
-          <li><strong>ML:</strong> Python, Pandas, NumPy, Matplotlib, Scikit-learn</li>
-          <li><strong>ML API:</strong> FastAPI</li>
-          <li><strong>Backend:</strong> Node.js, Express.js, MongoDB</li>
-          <li><strong>Frontend:</strong> React, Recharts</li>
-        </ul>
-
-        <h2>Architecture</h2>
+        <h2>Full-Stack System Architecture</h2>
         <p>
-          Hugging Face Dataset → Python/Pandas → Data Cleaning → Feature Engineering →
-          Random Forest ML → Saved Model → FastAPI → Node/Express → MongoDB → React Dashboard
+          Hugging Face CSV &rarr; Pandas Preprocessing &rarr; Feature Engineering &rarr; Random Forest ML (<code>model.pkl</code>) &rarr; FastAPI (:8000) &rarr; Express.js (:5000) &rarr; MongoDB Atlas &rarr; React/Vite Dashboard (:3000).
         </p>
       </div>
     </div>

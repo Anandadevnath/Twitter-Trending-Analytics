@@ -2,8 +2,30 @@ import { useState, useEffect } from 'react'
 import { getAnalytics } from '../api'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
-const COLORS = ['#1da1f2', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22']
+const PALETTE = ['#00df8f', '#f5a623', '#f81ce5', '#ff0055', '#7928ca', '#3291ff', '#888888']
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div style={{
+        background: '#111',
+        border: '1px solid #333',
+        padding: '0.5rem 0.75rem',
+        borderRadius: '6px',
+        fontSize: '0.8rem',
+        color: '#ededed',
+        fontFamily: 'monospace'
+      }}>
+        <p style={{ fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>{label || payload[0].name}</p>
+        <p style={{ color: payload[0].color || '#0070f3' }}>
+          {payload[0].value?.toLocaleString()}
+        </p>
+      </div>
+    )
+  }
+  return null
+}
 
 function Analytics() {
   const [data, setData] = useState(null)
@@ -17,7 +39,7 @@ function Analytics() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <div className="loading">Loading analytics...</div>
+  if (loading) return <div className="loading">&gt; Aggregating dataset distributions...</div>
   if (error) return <div className="page"><div className="error">Error: {error}</div></div>
   if (!data) return null
 
@@ -27,75 +49,91 @@ function Analytics() {
 
   return (
     <div className="page">
-      <h1 className="page-title">Analytics</h1>
+      <div className="page-header">
+        <h1 className="page-title">Analytics</h1>
+        <p className="page-subtitle">Seasonality, virality levels, and domain distribution metrics</p>
+      </div>
 
       <div className="cards-grid">
         <div className="stat-card">
-          <h3>Total Trends</h3>
+          <h3>Total Trends Analyzed</h3>
           <div className="value">{data.totalTrends.toLocaleString()}</div>
         </div>
-        <div className="stat-card green">
-          <h3>Categories</h3>
+        <div className="stat-card">
+          <h3>Tracked Categories</h3>
           <div className="value">{data.categoryDistribution.length}</div>
         </div>
-        <div className="stat-card orange">
-          <h3>Year Range</h3>
-          <div className="value">{data.years[0]} - {data.years[data.years.length - 1]}</div>
-        </div>
-        <div className="stat-card purple">
-          <h3>Avg Tweets/Trend</h3>
+        <div className="stat-card">
+          <h3>Avg Volume per Trend</h3>
           <div className="value">
             {Math.round(data.trendsByYear.reduce((s, d) => s + d.totalTweets, 0) / data.totalTrends).toLocaleString()}
+          </div>
+        </div>
+        <div className="stat-card">
+          <h3>Viral Ratio (&gt;10M)</h3>
+          <div className="value">
+            {((data.trendingLevelDistribution.find(l => l._id === 'Viral')?.count || 0) / data.totalTrends * 100).toFixed(2)}%
           </div>
         </div>
       </div>
 
       <div className="charts-grid">
         <div className="chart-card">
-          <h3>Monthly Trending Frequency</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <h3>Monthly Trend Seasonality</h3>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={monthData}>
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="count" fill="#e67e22" radius={[4,4,0,0]} />
+              <XAxis dataKey="month" stroke="#444" tick={{fill: '#888', fontSize: 11}} />
+              <YAxis stroke="#444" tick={{fill: '#888', fontSize: 11}} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="count" fill="#f5a623" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="chart-card">
-          <h3>Trending Level Distribution</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <h3>Trending Level Proportions</h3>
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
-              <Pie data={levelData} dataKey="value" nameKey="name" cx="50%" cy="50%"
-                   outerRadius={100} label={({name, value}) => `${name}: ${value}`}>
-                {levelData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+              <Pie
+                data={levelData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={95}
+                stroke="#111"
+                strokeWidth={2}
+              >
+                {levelData.map((_, i) => (
+                  <Cell key={i} fill={PALETTE[i % PALETTE.length]} />
+                ))}
               </Pie>
-              <Tooltip />
+              <Tooltip content={<CustomTooltip />} />
             </PieChart>
           </ResponsiveContainer>
         </div>
 
         <div className="chart-card">
-          <h3>Category Breakdown</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <h3>Category Density</h3>
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={catData}>
-              <XAxis dataKey="name" tick={{fontSize: 12}} />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#9b59b6" radius={[4,4,0,0]} />
+              <XAxis dataKey="name" stroke="#444" tick={{fill: '#888', fontSize: 10}} />
+              <YAxis stroke="#444" tick={{fill: '#888', fontSize: 11}} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="value" fill="#7928ca" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="chart-card">
-          <h3>Tweets by Year</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.trendsByYear.map(d => ({year: d._id, tweets: d.totalTweets}))}>
-              <XAxis dataKey="year" />
-              <YAxis />
-              <Tooltip formatter={(v) => v.toLocaleString()} />
-              <Bar dataKey="tweets" fill="#1abc9c" radius={[4,4,0,0]} />
+          <h3>Cumulative Tweets per Year</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={data.trendsByYear.map(d => ({year: String(d._id), tweets: d.totalTweets}))}>
+              <XAxis dataKey="year" stroke="#444" tick={{fill: '#888', fontSize: 11}} />
+              <YAxis stroke="#444" tick={{fill: '#888', fontSize: 11}} tickFormatter={(v) => `${(v/1e9).toFixed(1)}B`} />
+              <Tooltip content={<CustomTooltip />} />
+              <Bar dataKey="tweets" fill="#3291ff" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
