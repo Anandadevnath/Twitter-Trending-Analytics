@@ -6,7 +6,7 @@
       "precision": 89.83,
       "recall": 90.41,
       "f1_score": 87.12,
-      "latency_ms": 2106.34
+      "latency_ms": 2230.58
     },
     {
       "name": "Logistic Regression",
@@ -14,7 +14,7 @@
       "precision": 89.29,
       "recall": 72.88,
       "f1_score": 79.3,
-      "latency_ms": 10738.63
+      "latency_ms": 11824.52
     },
     {
       "name": "Gradient Boosting",
@@ -22,7 +22,7 @@
       "precision": 92.39,
       "recall": 91.9,
       "f1_score": 89.93,
-      "latency_ms": 7763.44
+      "latency_ms": 8211.56
     }
   ],
   "classes": [
