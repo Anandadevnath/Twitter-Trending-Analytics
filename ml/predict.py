@@ -19,6 +19,12 @@ def load_artifacts():
         single_model = joblib.load(os.path.join(MODEL_DIR, 'model.pkl'))
         models = {'Random Forest': single_model}
 
+    # Backward compatibility for scikit-learn version differences on LogisticRegression
+    for m in models.values():
+        if hasattr(m, '__class__') and m.__class__.__name__ == 'LogisticRegression':
+            if not hasattr(m, 'multi_class'):
+                m.multi_class = 'auto'
+
     lifespan_path = os.path.join(MODEL_DIR, 'lifespan_regressor.pkl')
     lifespan_regressor = joblib.load(lifespan_path) if os.path.exists(lifespan_path) else None
 

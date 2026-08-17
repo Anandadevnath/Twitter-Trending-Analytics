@@ -15,6 +15,7 @@ app = FastAPI(title="Twitter Trending ML API", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
