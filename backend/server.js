@@ -17,13 +17,21 @@ app.use('/api/analytics', require('./routes/analytics'));
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-// Connect to MongoDB and start server
+// Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log('Connected to MongoDB');
-    app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
+    // Only listen if not running on Vercel
+    if (process.env.NODE_ENV !== 'production') {
+      app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
+    }
   })
   .catch(err => {
     console.error('MongoDB connection error:', err.message);
-    process.exit(1);
+    if (process.env.NODE_ENV !== 'production') {
+      process.exit(1);
+    }
   });
+
+// Export the Express API for Vercel serverless deployment
+module.exports = app;
