@@ -34,7 +34,11 @@ def load_artifacts():
     # Load cleaned dataset for similarity searches
     data_path = os.path.join(MODEL_DIR, 'data', 'twitter-trending-hashtags-cleaned.csv')
     df = pd.read_csv(data_path)
-    return models, lifespan_regressor, tfidf, scaler, df
+
+    # Precompute TF-IDF matrix for all dataset tags once at startup (prevents re-vectorizing on every query)
+    all_tag_vecs = tfidf.transform(df['tag'].fillna(''))
+
+    return models, lifespan_regressor, tfidf, scaler, df, all_tag_vecs
 
 def assign_trending_level(tweets):
     if tweets < 100_000:
@@ -60,12 +64,19 @@ def estimate_tone(tag, tweets):
     else:
         return {'sentiment': 'Informational / Neutral', 'score': '0.00', 'color': '#888888'}
 
-def find_similar_hashtags(tag, tfidf, df, top_k=4):
+def find_similar_hashtags(tag, tfidf, df, all_tag_vecs=None, top_k=4):
     input_vec = tfidf.transform([tag])
-    all_vecs = tfidf.transform(df['tag'].fillna(''))
+    all_vecs = all_tag_vecs if all_tag_vecs is not None else tfidf.transform(df['tag'].fillna(''))
     similarities = cosine_similarity(input_vec, all_vecs).flatten()
 
-    top_indices = similarities.argsort()[::-1]
+    # Fast top-k selection with argpartition instead of full sort
+    k_candidates = min(len(similarities), top_k * 5)
+    if k_candidates < len(similarities):
+        candidate_indices = np.argpartition(similarities, -k_candidates)[-k_candidates:]
+        top_indices = candidate_indices[np.argsort(similarities[candidate_indices])[::-1]]
+    else:
+        top_indices = similarities.argsort()[::-1]
+
     results = []
     seen = set([tag.lower()])
 
@@ -97,9 +108,10 @@ def find_similar_hashtags(tag, tfidf, df, top_k=4):
 
     return results
 
-def explain_prediction(tag, tweets, rank, year, model, tfidf):
-    # Compute local token contribution scores
-    input_vec = tfidf.transform([tag])
+def explain_prediction(tag, tweets, rank, year, model, tfidf, input_vec=None):
+    # Reuse input_vec if already computed
+    if input_vec is None:
+        input_vec = tfidf.transform([tag])
     feature_names = tfidf.get_feature_names_out()
     non_zero_indices = input_vec.indices
 
@@ -144,11 +156,10 @@ def estimate_lifespan(X, lifespan_regressor, tweets, rank):
         'decay_curve': decay_curve
     }
 
-def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tfidf, scaler, df):
-    # TF-IDF
+def extract_features(tag, year, tweets, rank, tfidf, scaler):
+    """Build sparse feature matrix X and return components for reuse across models."""
     tfidf_feat = tfidf.transform([tag])
 
-    # Metadata matching train.py: [log_tweets, log_rank, tag_length, word_count, month, year]
     log_tweets = np.log1p(tweets)
     log_rank = np.log1p(rank)
     tag_length = len(tag)
@@ -159,39 +170,60 @@ def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tf
     scaled_num = scaler.transform(raw_num)
 
     X = sp.hstack([tfidf_feat, sp.csr_matrix(scaled_num)])
+    return X, tfidf_feat
 
-    # Predict class & probabilities
+def predict_single_model(model, X):
+    """Fast prediction and probability extraction for one model given precomputed X."""
     pred_class = model.predict(X)[0]
     try:
         probs = model.predict_proba(X)[0]
     except AttributeError:
-        # Fix unpickled LogisticRegression in newer scikit-learn
         if not hasattr(model, 'multi_class'):
             model.multi_class = 'auto'
         probs = model.predict_proba(X)[0]
 
-    # Category Probabilities sorted descending
-    class_probs = []
-    for cls, prob in zip(model.classes_, probs):
-        class_probs.append({
-            'category': cls,
-            'confidence': round(float(prob) * 100, 1)
-        })
-    class_probs = sorted(class_probs, key=lambda x: x['confidence'], reverse=True)
+    class_probs = [
+        {'category': cls, 'confidence': round(float(prob) * 100, 1)}
+        for cls, prob in zip(model.classes_, probs)
+    ]
+    class_probs.sort(key=lambda x: x['confidence'], reverse=True)
+    return pred_class, class_probs
+
+def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tfidf, scaler, df, all_tag_vecs=None, all_models=None, active_model_name='Random Forest'):
+    # Extract features once
+    X, tfidf_feat = extract_features(tag, year, tweets, rank, tfidf, scaler)
+
+    # Active model prediction
+    pred_class, class_probs = predict_single_model(model, X)
 
     trending_lvl = assign_trending_level(tweets)
     tone_info = estimate_tone(tag, tweets)
-    similar_trends = find_similar_hashtags(tag, tfidf, df, top_k=4)
-    explanation = explain_prediction(tag, tweets, rank, year, model, tfidf)
+    similar_trends = find_similar_hashtags(tag, tfidf, df, all_tag_vecs=all_tag_vecs, top_k=4)
+    explanation = explain_prediction(tag, tweets, rank, year, model, tfidf, input_vec=tfidf_feat)
     lifespan = estimate_lifespan(X, lifespan_regressor, tweets, rank)
+
+    # Model comparisons without re-extracting features or re-calculating similar trends
+    comparisons = {}
+    if all_models:
+        for name, m in all_models.items():
+            try:
+                m_class, m_probs = predict_single_model(m, X)
+                comparisons[name] = {
+                    'category': m_class,
+                    'confidence': m_probs[0]['confidence'] if m_probs else 0.0
+                }
+            except Exception:
+                pass
 
     return {
         'category': pred_class,
-        'confidence': class_probs[0]['confidence'],
+        'confidence': class_probs[0]['confidence'] if class_probs else 0.0,
         'trending_level': trending_lvl,
         'probabilities': class_probs,
         'tone': tone_info,
         'similar_trends': similar_trends,
         'explanation': explanation,
-        'lifespan': lifespan
+        'lifespan': lifespan,
+        'comparisons': comparisons,
+        'active_model': active_model_name
     }

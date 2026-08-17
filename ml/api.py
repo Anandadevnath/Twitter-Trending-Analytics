@@ -20,7 +20,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-models, lifespan_regressor, tfidf, scaler, df = load_artifacts()
+models, lifespan_regressor, tfidf, scaler, df, all_tag_vecs = load_artifacts()
+
+# Cache benchmark and XAI data in memory on boot
+BENCHMARK_DATA = {}
+benchmark_path = os.path.join(os.path.dirname(__file__), 'model_benchmark.json')
+if os.path.exists(benchmark_path):
+    with open(benchmark_path, 'r') as f:
+        BENCHMARK_DATA = json.load(f)
 
 class PredictionInput(BaseModel):
     tag: str
@@ -31,9 +38,8 @@ class PredictionInput(BaseModel):
 
 @app.post("/predict")
 def predict(input: PredictionInput):
-    # Select active model or fallback to first available
     active_model = models.get(input.model_name) or next(iter(models.values()))
-    result = predict_comprehensive(
+    return predict_comprehensive(
         tag=input.tag,
         year=input.year,
         tweets=input.tweets,
@@ -42,63 +48,27 @@ def predict(input: PredictionInput):
         lifespan_regressor=lifespan_regressor,
         tfidf=tfidf,
         scaler=scaler,
-        df=df
+        df=df,
+        all_tag_vecs=all_tag_vecs,
+        all_models=models,
+        active_model_name=input.model_name
     )
-
-    # Compute comparison across all models
-    comparisons = {}
-    for name, m in models.items():
-        try:
-            res = predict_comprehensive(
-                tag=input.tag,
-                year=input.year,
-                tweets=input.tweets,
-                rank=input.rank,
-                model=m,
-                lifespan_regressor=lifespan_regressor,
-                tfidf=tfidf,
-                scaler=scaler,
-                df=df
-            )
-            comparisons[name] = {
-                'category': res['category'],
-                'confidence': res['confidence']
-            }
-        except Exception:
-            pass
-
-    result['comparisons'] = comparisons
-    result['active_model'] = input.model_name
-    return result
 
 @app.get("/benchmark")
 def get_benchmark():
-    benchmark_path = os.path.join(os.path.dirname(__file__), 'model_benchmark.json')
-    if os.path.exists(benchmark_path):
-        with open(benchmark_path, 'r') as f:
-            return json.load(f)
+    if BENCHMARK_DATA:
+        return BENCHMARK_DATA
     return {"error": "Benchmark data not found. Run train.py first."}
 
 @app.get("/xai/features")
 def get_feature_importance():
-    benchmark_path = os.path.join(os.path.dirname(__file__), 'model_benchmark.json')
-    if os.path.exists(benchmark_path):
-        with open(benchmark_path, 'r') as f:
-            data = json.load(f)
-            return {
-                "global_importance": data.get("global_feature_importance", []),
-                "confusion_matrices": data.get("confusion_matrices", {}),
-                "classes": data.get("classes", [])
-            }
+    if BENCHMARK_DATA:
+        return {
+            "global_importance": BENCHMARK_DATA.get("global_feature_importance", []),
+            "confusion_matrices": BENCHMARK_DATA.get("confusion_matrices", {}),
+            "classes": BENCHMARK_DATA.get("classes", [])
+        }
     return {"error": "XAI metrics not found."}
-
-@app.get("/benchmark")
-def get_benchmark():
-    benchmark_path = os.path.join(os.path.dirname(__file__), 'model_benchmark.json')
-    if os.path.exists(benchmark_path):
-        with open(benchmark_path, 'r') as f:
-            return json.load(f)
-    return {"error": "Benchmark data not found. Run train.py first."}
 
 @app.get("/health")
 def health():
