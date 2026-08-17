@@ -162,7 +162,13 @@ def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tf
 
     # Predict class & probabilities
     pred_class = model.predict(X)[0]
-    probs = model.predict_proba(X)[0]
+    try:
+        probs = model.predict_proba(X)[0]
+    except AttributeError:
+        # Fix unpickled LogisticRegression in newer scikit-learn
+        if not hasattr(model, 'multi_class'):
+            model.multi_class = 'auto'
+        probs = model.predict_proba(X)[0]
 
     # Category Probabilities sorted descending
     class_probs = []

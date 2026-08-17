@@ -8,7 +8,7 @@ export default defineConfig({
     proxy: {
       '/api': 'http://localhost:5000',
       '/ml': {
-        target: 'http://localhost:8000',
+        target: 'https://twitter-trending-analytics.onrender.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/ml/, '')
       }
