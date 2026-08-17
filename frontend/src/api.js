@@ -1,8 +1,8 @@
 import axios from 'axios'
 
 // Vercel Backend URL for trends data, Render ML URL for predictions
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://twitter-backend-sepia.vercel.app/api';
-const ML_BASE_URL = import.meta.env.VITE_ML_URL || 'https://twitter-trending-analytics.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+const ML_BASE_URL = import.meta.env.VITE_ML_URL;
 
 const API = axios.create({ baseURL: API_BASE_URL })
 const ML_API = axios.create({ baseURL: ML_BASE_URL })
