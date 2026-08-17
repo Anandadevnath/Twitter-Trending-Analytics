@@ -1,17 +1,56 @@
 import React, { useState, useEffect } from 'react'
 import { predictCategory, getModelBenchmark, getXaiFeatures } from '../api'
 
-const SAMPLES = [
-  { label: '#Trump', tag: 'Trump', year: 2025, tweets: 35000000, rank: 2, icon: '🏛️' },
-  { label: '#Messi', tag: 'Messi', year: 2026, tweets: 8500000, rank: 8, icon: '⚽' },
-  { label: '#ChatGPT', tag: 'ChatGPT', year: 2026, tweets: 4200000, rank: 12, icon: '💻' },
-  { label: '#TaylorSwift', tag: 'Taylor Swift', year: 2025, tweets: 28000000, rank: 3, icon: '🎬' },
-  { label: '#Christmas', tag: 'Christmas', year: 2025, tweets: 950000, rank: 25, icon: '🎄' },
-  { label: '#ClimateAction', tag: 'Climate', year: 2026, tweets: 45000, rank: 180, icon: '🌍' },
+const PRESET_SHOWCASE = [
+  {
+    categoryTitle: 'Sports & Live Events',
+    icon: '🏆',
+    color: '#00df8f',
+    tag: 'WorldCup',
+    year: 2026,
+    tweets: 45000000,
+    rank: 1,
+    desc: 'Mega-viral sports tournament with massive multi-million volume.'
+  },
+  {
+    categoryTitle: 'Breaking Politics',
+    icon: '🏛️',
+    color: '#3291ff',
+    tag: 'Election2026',
+    year: 2026,
+    tweets: 18500000,
+    rank: 3,
+    desc: 'High-urgency political discourse and voter sentiment signals.'
+  },
+  {
+    categoryTitle: 'Niche Technology',
+    icon: '💻',
+    color: '#b779ff',
+    tag: 'RustLang',
+    year: 2026,
+    tweets: 145000,
+    rank: 78,
+    desc: 'Targeted developer ecosystem conversation with sustained half-life.'
+  },
+  {
+    categoryTitle: 'Seasonal Holiday',
+    icon: '🎄',
+    color: '#f5a623',
+    tag: 'Christmas',
+    year: 2025,
+    tweets: 950000,
+    rank: 25,
+    desc: 'Annual cyclic celebratory momentum with strong positive sentiment.'
+  }
+]
+
+const QUICK_SAMPLES = [
+  { label: '#ChatGPT', tag: 'ChatGPT', year: 2026, tweets: 4200000, rank: 12, icon: '🤖' },
   { label: '#Bitcoin', tag: 'Bitcoin', year: 2026, tweets: 12500000, rank: 5, icon: '💰' },
-  { label: '#WorldCup', tag: 'WorldCup', year: 2026, tweets: 45000000, rank: 1, icon: '🏆' },
-  { label: '#CyberSecurity', tag: 'CyberSecurity', year: 2026, tweets: 180000, rank: 65, icon: '🛡️' },
-  { label: '#Halloween', tag: 'Halloween', year: 2025, tweets: 1200000, rank: 18, icon: '🎃' },
+  { label: '#TaylorSwift', tag: 'TaylorSwift', year: 2025, tweets: 28000000, rank: 2, icon: '🎬' },
+  { label: '#ClimateAction', tag: 'ClimateAction', year: 2026, tweets: 85000, rank: 120, icon: '🌍' },
+  { label: '#Messi', tag: 'Messi', year: 2026, tweets: 8500000, rank: 8, icon: '⚽' },
+  { label: '#CyberSecurity', tag: 'CyberSecurity', year: 2026, tweets: 180000, rank: 65, icon: '🛡️' }
 ]
 
 const CATEGORY_COLORS = {
@@ -30,7 +69,7 @@ const LEVEL_META = {
     color: '#ff0055',
     progress: 100,
     impact: 'Global Mega-Trend',
-    insight: 'Top 1% viral velocity. Dominates global feeds with multi-million audience reach.'
+    insight: 'Top 1% viral velocity. Dominates global feeds with multi-million reach.'
   },
   High: {
     badge: '🚀 HIGH MOMENTUM',
@@ -55,8 +94,29 @@ const LEVEL_META = {
   },
 }
 
+// Interactive Real-Time What-If Simulator Math
+function computeWhatIf(tweets, rank) {
+  const t = Number(tweets) || 0
+  const r = Number(rank) || 1
+  let level = 'Low'
+  if (t >= 10000000) level = 'Viral'
+  else if (t >= 1000000) level = 'High'
+  else if (t >= 100000) level = 'Medium'
+
+  const baseHours = Math.log1p(t) * 3.5 + (200 - Math.min(r, 200)) * 0.15
+  const lifespanHours = Math.max(2.0, Math.round(baseHours * 10) / 10)
+  const halfLife = Math.round(lifespanHours * 0.46 * 10) / 10
+
+  const decayCurve = [0, 6, 12, 24, 48, 72, 96, 120].map(h => ({
+    hour: h,
+    retention: Math.max(0, Math.round(100.0 * Math.exp(-1.5 * h / lifespanHours) * 10) / 10)
+  }))
+
+  return { level, lifespanHours, halfLife, decayCurve }
+}
+
 function Prediction() {
-  const [form, setForm] = useState({ tag: '', year: 2026, tweets: '', rank: '' })
+  const [form, setForm] = useState({ tag: 'WorldCup', year: 2026, tweets: 45000000, rank: 1 })
   const [selectedModel, setSelectedModel] = useState('Random Forest')
   const [result, setResult] = useState(null)
   const [submittedData, setSubmittedData] = useState(null)
@@ -64,6 +124,7 @@ function Prediction() {
   const [xaiData, setXaiData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [whatIfActive, setWhatIfActive] = useState(true)
 
   useEffect(() => {
     getModelBenchmark()
@@ -73,17 +134,14 @@ function Prediction() {
     getXaiFeatures()
       .then(res => setXaiData(res.data))
       .catch(() => {})
-  }, [])
 
-  const handleSampleClick = (s) => {
-    setForm({ tag: s.tag, year: s.year, tweets: s.tweets, rank: s.rank })
-    executePredict(s.tag, s.year, s.tweets, s.rank, selectedModel)
-  }
+    // Run default showcase prediction on mount
+    executePredict('WorldCup', 2026, 45000000, 1, 'Random Forest')
+  }, [])
 
   const executePredict = (tag, year, tweets, rank, modelName = selectedModel) => {
     setLoading(true)
     setError(null)
-    setResult(null)
 
     predictCategory({
       tag,
@@ -98,6 +156,11 @@ function Prediction() {
       })
       .catch(err => setError(err.response?.data?.detail || err.message || 'Prediction service offline.'))
       .finally(() => setLoading(false))
+  }
+
+  const handlePresetSelect = (preset) => {
+    setForm({ tag: preset.tag, year: preset.year, tweets: preset.tweets, rank: preset.rank })
+    executePredict(preset.tag, preset.year, preset.tweets, preset.rank, selectedModel)
   }
 
   const handleModelSwitch = (modelName) => {
@@ -116,61 +179,139 @@ function Prediction() {
     executePredict(form.tag, form.year, form.tweets, form.rank, selectedModel)
   }
 
-  const lvlMeta = result ? (LEVEL_META[result.trending_level] || LEVEL_META.Medium) : null
+  // Dynamic what-if recalculation
+  const currentTweets = Number(form.tweets) || 0
+  const currentRank = Number(form.rank) || 1
+  const sim = computeWhatIf(currentTweets, currentRank)
+  const simMeta = LEVEL_META[sim.level]
+
+  const activeLevelMeta = result ? (LEVEL_META[result.trending_level] || LEVEL_META.Medium) : simMeta
 
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">AI Trend Forecaster &amp; Classifier</h1>
-        <p className="page-subtitle">Multi-class classification, probabilistic distribution, sentiment tone &amp; cosine similarity</p>
+        <p className="page-subtitle">
+          Multi-Model inference, XAI feature attribution, interactive what-if simulation, and lifespan regression
+        </p>
       </div>
 
-      {/* Preset Quick-Test Bar */}
-      <div style={{
-        background: '#111',
-        border: '1px solid #222',
-        borderRadius: '8px',
-        padding: '0.85rem 1.25rem',
-        marginBottom: '2rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem',
-        flexWrap: 'wrap'
-      }}>
-        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          ⚡ Sample Queries:
-        </span>
-        {SAMPLES.map((s, i) => (
-          <button
-            key={i}
-            onClick={() => handleSampleClick(s)}
-            style={{
-              background: '#181818',
-              border: '1px solid #2a2a2a',
-              color: '#ededed',
-              padding: '0.35rem 0.75rem',
-              borderRadius: '6px',
-              fontSize: '0.8rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem'
-            }}
-          >
-            <span>{s.icon}</span>
-            <span>{s.label}</span>
-          </button>
-        ))}
+      {/* Feature 5: Preset Test-Case Showcase */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem'
+        }}>
+          <div>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#00df8f', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              ✦ Feature 5: Evaluation Showcase Presets
+            </span>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#ededed', margin: '0.2rem 0 0 0' }}>
+              Select a Verified Test Scenario
+            </h3>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: '#666' }}>Click card to test live</span>
+        </div>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+          gap: '1rem'
+        }}>
+          {PRESET_SHOWCASE.map((p, idx) => {
+            const isSelected = form.tag.toLowerCase() === p.tag.toLowerCase()
+            return (
+              <div
+                key={idx}
+                onClick={() => handlePresetSelect(p)}
+                style={{
+                  background: isSelected ? 'rgba(0, 223, 143, 0.08)' : '#111',
+                  border: `1px solid ${isSelected ? p.color : '#222'}`,
+                  borderRadius: '8px',
+                  padding: '1.25rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <span style={{ fontSize: '1.4rem' }}>{p.icon}</span>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: p.color,
+                    background: `${p.color}15`,
+                    padding: '0.2rem 0.5rem',
+                    borderRadius: '12px',
+                    border: `1px solid ${p.color}30`
+                  }}>
+                    {p.categoryTitle}
+                  </span>
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginBottom: '0.25rem' }}>
+                  #{p.tag}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.6rem' }}>
+                  {p.tweets.toLocaleString()} tweets &bull; Rank #{p.rank}
+                </div>
+                <p style={{ fontSize: '0.75rem', color: '#aaa', lineHeight: 1.4, margin: 0 }}>
+                  {p.desc}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Quick Sample Chips */}
+        <div style={{
+          marginTop: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          flexWrap: 'wrap',
+          fontSize: '0.75rem'
+        }}>
+          <span style={{ color: '#666', fontWeight: 600 }}>Quick tags:</span>
+          {QUICK_SAMPLES.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                setForm({ tag: s.tag, year: s.year, tweets: s.tweets, rank: s.rank })
+                executePredict(s.tag, s.year, s.tweets, s.rank, selectedModel)
+              }}
+              style={{
+                background: '#161616',
+                border: '1px solid #282828',
+                color: '#ccc',
+                padding: '0.25rem 0.6rem',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '0.75rem'
+              }}
+            >
+              {s.icon} {s.label}
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Main Grid: Form + Simulator / Results */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '2rem', alignItems: 'start' }}>
 
-        {/* Left Column: Input Form & Model Architecture Info */}
+        {/* Left Column: Form & Real-Time "What-If" Sliders */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="predict-form" style={{ maxWidth: '100%' }}>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ededed', marginBottom: '1.25rem' }}>
-              Hashtag Inputs
-            </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#ededed', margin: 0 }}>
+                Hashtag Parameters
+              </h3>
+              <span style={{ fontSize: '0.7rem', color: '#00df8f', fontFamily: 'monospace' }}>
+                Active: {selectedModel}
+              </span>
+            </div>
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
@@ -191,40 +332,116 @@ function Prediction() {
                     className="input-field"
                     type="number"
                     value={form.year}
-                    onChange={e => setForm({ ...form, year: e.target.value })}
+                    onChange={e => setForm({ ...form, year: Number(e.target.value) })}
                   />
                 </div>
-
                 <div className="form-group">
-                  <label>Rank Position</label>
+                  <label>Rank: #{form.rank}</label>
                   <input
                     className="input-field"
                     type="number"
-                    placeholder="e.g. 5"
+                    min="1"
+                    max="200"
                     value={form.rank}
-                    onChange={e => setForm({ ...form, rank: e.target.value })}
+                    onChange={e => setForm({ ...form, rank: Number(e.target.value) })}
                   />
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Estimated Tweets</label>
-                <input
-                  className="input-field"
-                  type="number"
-                  placeholder="e.g. 5000000"
-                  value={form.tweets}
-                  onChange={e => setForm({ ...form, tweets: e.target.value })}
-                />
+              {/* Feature 3: Real-Time "What-If" Simulation Sliders */}
+              <div style={{
+                background: '#161616',
+                border: '1px solid #282828',
+                borderRadius: '8px',
+                padding: '1rem',
+                marginTop: '0.5rem',
+                marginBottom: '1rem'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#f5a623', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    🎛️ Feature 3: Real-Time "What-If" Sliders
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: '#888' }}>Live dynamic re-calc</span>
+                </div>
+
+                {/* Tweet Volume Slider */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.35rem' }}>
+                    <span style={{ color: '#aaa' }}>Tweet Volume</span>
+                    <span style={{ color: '#00df8f', fontFamily: 'monospace', fontWeight: 600 }}>
+                      {Number(form.tweets).toLocaleString()}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1000"
+                    max="50000000"
+                    step="50000"
+                    value={form.tweets}
+                    onChange={e => setForm({ ...form, tweets: Number(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#00df8f', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#555' }}>
+                    <span>1K (Niche)</span>
+                    <span>1M (High)</span>
+                    <span>50M (Viral)</span>
+                  </div>
+                </div>
+
+                {/* Rank Slider */}
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.35rem' }}>
+                    <span style={{ color: '#aaa' }}>Peak Rank Position</span>
+                    <span style={{ color: '#3291ff', fontFamily: 'monospace', fontWeight: 600 }}>
+                      #{form.rank}
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="200"
+                    step="1"
+                    value={form.rank}
+                    onChange={e => setForm({ ...form, rank: Number(e.target.value) })}
+                    style={{ width: '100%', accentColor: '#3291ff', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#555' }}>
+                    <span>#1 (Top Trend)</span>
+                    <span>#100</span>
+                    <span>#200 (Long-tail)</span>
+                  </div>
+                </div>
+
+                {/* Live What-If Computed Output Preview */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.5rem',
+                  paddingTop: '0.75rem',
+                  borderTop: '1px solid #222'
+                }}>
+                  <div style={{ background: '#1c1c1c', padding: '0.5rem', borderRadius: '4px' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#777' }}>SIMULATED LEVEL</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: simMeta.color, marginTop: '0.15rem' }}>
+                      {sim.level}
+                    </div>
+                  </div>
+                  <div style={{ background: '#1c1c1c', padding: '0.5rem', borderRadius: '4px' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#777' }}>SIMULATED LIFESPAN</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f5a623', marginTop: '0.15rem', fontFamily: 'monospace' }}>
+                      ~{sim.lifespanHours} hrs
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <button
                 type="submit"
                 className="btn btn-primary"
                 disabled={loading}
-                style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem' }}
+                style={{ width: '100%', padding: '0.75rem' }}
               >
-                {loading ? 'Analyzing Neural Patterns...' : '✨ Run AI Prediction'}
+                {loading ? 'Analyzing Neural Patterns...' : '✨ Run Full Model Inference'}
               </button>
             </form>
 
@@ -246,7 +463,7 @@ function Prediction() {
                 <span style={{ color: '#ededed', fontFamily: 'monospace' }}>Log1p + StandardScaler</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Active Model:</span>
+                <span>Active Classifier:</span>
                 <span style={{ color: '#00df8f', fontWeight: 600 }}>{selectedModel}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -257,9 +474,9 @@ function Prediction() {
           </div>
         </div>
 
-        {/* Main Forecast Result Card */}
+        {/* Right Column: Live Results */}
         <div>
-          {result && lvlMeta ? (
+          {result && activeLevelMeta ? (
             <div style={{
               background: '#111',
               border: '1px solid #282828',
@@ -281,15 +498,15 @@ function Prediction() {
                   </span>
                 </div>
                 <div style={{
-                  background: `${lvlMeta.color}15`,
-                  color: lvlMeta.color,
-                  border: `1px solid ${lvlMeta.color}40`,
+                  background: `${activeLevelMeta.color}15`,
+                  color: activeLevelMeta.color,
+                  border: `1px solid ${activeLevelMeta.color}40`,
                   padding: '0.35rem 0.75rem',
                   borderRadius: '20px',
                   fontSize: '0.75rem',
                   fontWeight: 700
                 }}>
-                  {lvlMeta.badge}
+                  {activeLevelMeta.badge}
                 </div>
               </div>
 
@@ -325,7 +542,87 @@ function Prediction() {
                 </div>
               </div>
 
-              {/* 2. Sentiment & Tone Heuristic */}
+              {/* Feature 1: Multi-Model Side-by-Side Comparison Strip */}
+              {result.comparisons && (
+                <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#3291ff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      ⚡ Feature 1: Multi-Model Inference Comparison
+                    </span>
+                    <span style={{ fontSize: '0.65rem', color: '#666' }}>Cross-model validation</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '0.5rem' }}>
+                    {Object.entries(result.comparisons).map(([name, cmp], idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleModelSwitch(name)}
+                        style={{
+                          background: selectedModel === name ? 'rgba(50, 145, 255, 0.12)' : '#1f1f1f',
+                          border: `1px solid ${selectedModel === name ? '#3291ff' : '#2a2a2a'}`,
+                          padding: '0.6rem',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <div style={{ fontSize: '0.65rem', color: '#888', marginBottom: '0.2rem' }}>{name}</div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: CATEGORY_COLORS[cmp.category] || '#fff' }}>
+                          {cmp.category}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#00df8f', fontFamily: 'monospace' }}>
+                          {cmp.confidence}%
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Feature 2: Explainable AI (XAI) & Token Attribution */}
+              {result.explanation && (
+                <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b779ff', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      🧠 Feature 2: Explainable AI (XAI) Feature Attribution
+                    </span>
+                    <span style={{ fontSize: '0.65rem', color: '#666' }}>Sub-token TF-IDF weights</span>
+                  </div>
+                  {result.explanation.tokens && result.explanation.tokens.length > 0 ? (
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                      {result.explanation.tokens.map((t, idx) => (
+                        <div key={idx} style={{
+                          background: 'rgba(183, 121, 255, 0.12)',
+                          border: '1px solid rgba(183, 121, 255, 0.3)',
+                          borderRadius: '4px',
+                          padding: '0.25rem 0.5rem',
+                          fontSize: '0.75rem',
+                          display: 'flex',
+                          gap: '0.4rem',
+                          alignItems: 'center'
+                        }}>
+                          <span style={{ color: '#ededed' }}>"{t.token}"</span>
+                          <span style={{ color: '#b779ff', fontFamily: 'monospace', fontWeight: 700 }}>{t.weight}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.75rem', color: '#666', fontStyle: 'italic', marginBottom: '0.5rem' }}>
+                      Sub-word tokens matched against 2,500 vocabulary features.
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                    {result.explanation.signals?.map((s, idx) => (
+                      <div key={idx} style={{ background: '#1c1c1c', padding: '0.5rem', borderRadius: '4px', fontSize: '0.7rem' }}>
+                        <div style={{ color: '#888' }}>{s.signal}</div>
+                        <div style={{ color: '#ededed', fontWeight: 600, marginTop: '0.1rem' }}>{s.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Sentiment & Tone Heuristic */}
               {result.tone && (
                 <div style={{
                   background: '#161616',
@@ -338,7 +635,7 @@ function Prediction() {
                 }}>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Tone &amp; Discourse Sentiment
+                      Discourse Tone &amp; Sentiment
                     </span>
                     <div style={{ fontSize: '0.9rem', fontWeight: 600, color: result.tone.color, marginTop: '0.2rem' }}>
                       {result.tone.sentiment}
@@ -358,7 +655,7 @@ function Prediction() {
                 </div>
               )}
 
-              {/* 3. Cosine Similarity Matches */}
+              {/* 4. Nearest Historical Trends */}
               {result.similar_trends && result.similar_trends.length > 0 && (
                 <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1.25rem' }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ededed', marginBottom: '0.75rem' }}>
@@ -384,49 +681,12 @@ function Prediction() {
                 </div>
               )}
 
-              {/* 4. Explainable AI: Feature & Token Attribution */}
-              {result.explanation && (
-                <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1.25rem' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ededed', marginBottom: '0.75rem' }}>
-                    🧠 Model Interpretability &amp; Feature Attribution (XAI)
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '0.5rem' }}>
-                    Sub-token TF-IDF weights contributing to decision:
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                    {result.explanation.tokens?.map((t, idx) => (
-                      <div key={idx} style={{
-                        background: 'rgba(50, 145, 255, 0.1)',
-                        border: '1px solid rgba(50, 145, 255, 0.3)',
-                        borderRadius: '4px',
-                        padding: '0.25rem 0.5rem',
-                        fontSize: '0.75rem',
-                        display: 'flex',
-                        gap: '0.4rem',
-                        alignItems: 'center'
-                      }}>
-                        <span style={{ color: '#ededed' }}>"{t.token}"</span>
-                        <span style={{ color: '#3291ff', fontFamily: 'monospace', fontWeight: 600 }}>{t.weight}%</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-                    {result.explanation.signals?.map((s, idx) => (
-                      <div key={idx} style={{ background: '#1c1c1c', padding: '0.5rem', borderRadius: '4px', fontSize: '0.7rem' }}>
-                        <div style={{ color: '#888' }}>{s.signal}</div>
-                        <div style={{ color: '#ededed', fontWeight: 600, marginTop: '0.1rem' }}>{s.value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 5. Trend Lifespan & Half-Life Forecast */}
+              {/* 5. Lifespan Regression Forecast */}
               {result.lifespan && (
                 <div style={{ background: '#161616', border: '1px solid #242424', borderRadius: '8px', padding: '1.25rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ededed' }}>
-                      ⏳ Trend Lifespan &amp; Decay Forecast (Regression)
+                      ⏳ Trend Lifespan &amp; Decay Forecast (RandomForestRegressor)
                     </span>
                     <span style={{ color: '#f5a623', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem' }}>
                       ~{result.lifespan.expected_active_hours} hrs active
@@ -469,7 +729,7 @@ function Prediction() {
                 Ready to Forecast
               </h3>
               <p style={{ fontSize: '0.85rem', color: '#888', maxWidth: '320px', lineHeight: 1.5 }}>
-                Enter any hashtag name or click one of the quick test presets above to generate a full ML report.
+                Select a showcase card above or adjust the sliders to simulate trend metrics.
               </p>
             </div>
           )}
@@ -477,14 +737,14 @@ function Prediction() {
 
       </div>
 
-      {/* Multi-Model Benchmark Section */}
+      {/* Multi-Model Benchmark Comparison Table */}
       {benchmark && benchmark.benchmark && (
         <div style={{ marginTop: '3rem' }}>
           <div className="page-header" style={{ marginBottom: '1.25rem' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ededed' }}>
               🔬 ML Algorithm Benchmarking Comparison
             </h2>
-            <p className="page-subtitle">Evaluation metrics across 4 classification models trained on 12,036 records</p>
+            <p className="page-subtitle">Evaluation metrics across 3 models trained on 12,036 records</p>
           </div>
 
           <div className="table-container">
@@ -496,7 +756,8 @@ function Prediction() {
                   <th>Precision</th>
                   <th>Recall</th>
                   <th>F1-Score</th>
-                  <th>Live Query Result</th>
+                  <th>Latency (ms)</th>
+                  <th>Live Result</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -517,7 +778,7 @@ function Prediction() {
                           borderRadius: '4px',
                           border: '1px solid rgba(0,223,143,0.3)'
                         }}>
-                          ACTIVE MODEL
+                          ACTIVE
                         </span>
                       )}
                     </td>
@@ -528,8 +789,7 @@ function Prediction() {
                             width: `${m.accuracy}%`,
                             height: '100%',
                             background: selectedModel === m.name ? '#00df8f' : '#3291ff',
-                            borderRadius: '3px',
-                            transition: 'width 0.8s ease'
+                            borderRadius: '3px'
                           }} />
                         </div>
                         <span className="font-mono" style={{ color: '#00df8f', width: '48px' }}>{m.accuracy}%</span>
@@ -538,6 +798,7 @@ function Prediction() {
                     <td className="font-mono">{m.precision}%</td>
                     <td className="font-mono">{m.recall}%</td>
                     <td className="font-mono">{m.f1_score}%</td>
+                    <td className="font-mono" style={{ color: '#888' }}>{m.latency_ms}ms</td>
                     <td>
                       {result?.comparisons?.[m.name] ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -581,78 +842,6 @@ function Prediction() {
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* Confusion Matrix Heatmap Section */}
-      {xaiData && xaiData.confusion_matrices && xaiData.classes && (
-        <div style={{ marginTop: '3rem' }}>
-          <div className="page-header" style={{ marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ededed' }}>
-              📊 Model Confusion Matrix Heatmap ({selectedModel})
-            </h2>
-            <p className="page-subtitle">Actual vs Predicted class distribution on 2,408 test validation samples</p>
-          </div>
-
-          <div style={{ background: '#111', border: '1px solid #222', borderRadius: '8px', padding: '1.5rem', overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: `100px repeat(${xaiData.classes.length}, 1fr)`, gap: '4px', minWidth: '600px' }}>
-              {/* Header row */}
-              <div style={{ fontSize: '0.7rem', color: '#888', fontWeight: 600, padding: '0.4rem' }}>Actual \ Pred</div>
-              {xaiData.classes.map((cls, idx) => (
-                <div key={idx} style={{
-                  fontSize: '0.7rem',
-                  fontWeight: 600,
-                  color: CATEGORY_COLORS[cls] || '#fff',
-                  textAlign: 'center',
-                  padding: '0.4rem'
-                }}>
-                  {cls.slice(0, 5)}
-                </div>
-              ))}
-
-              {/* Rows */}
-              {xaiData.classes.map((rowCls, rIdx) => {
-                const row = xaiData.confusion_matrices[selectedModel]?.[rIdx] || []
-                const maxVal = Math.max(...row, 1)
-                return (
-                  <React.Fragment key={`row-group-${rIdx}`}>
-                    <div style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      color: CATEGORY_COLORS[rowCls] || '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '0.4rem'
-                    }}>
-                      {rowCls}
-                    </div>
-                    {row.map((val, cIdx) => {
-                      const isDiag = rIdx === cIdx
-                      const intensity = val / maxVal
-                      return (
-                        <div
-                          key={`cell-${rIdx}-${cIdx}`}
-                          title={`Actual: ${rowCls}, Predicted: ${xaiData.classes[cIdx]} (${val} samples)`}
-                          style={{
-                            background: isDiag ? `rgba(0, 223, 143, ${Math.max(intensity, 0.15)})` : (val > 0 ? `rgba(255, 0, 85, ${Math.min(intensity * 0.5, 0.3)})` : '#161616'),
-                            color: isDiag ? '#fff' : (val > 0 ? '#ff8099' : '#444'),
-                            padding: '0.6rem 0.2rem',
-                            textAlign: 'center',
-                            borderRadius: '4px',
-                            fontFamily: 'monospace',
-                            fontSize: '0.75rem',
-                            fontWeight: isDiag ? 700 : 400
-                          }}
-                        >
-                          {val}
-                        </div>
-                      )
-                    })}
-                  </React.Fragment>
-                )
-              })}
-            </div>
           </div>
         </div>
       )}
