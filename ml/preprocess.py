@@ -83,7 +83,14 @@ def assign_category(tag):
                 'doj', 'indictment', 'arraign', 'verdict', 'guilty',
                 'acquit', 'pardon', 'resign', 'recall', 'vance', 'rfk',
                 'tulsi', 'haley', 'newsom', 'trudeau', 'macron', 'modi',
-                'netanyahu', 'milei', 'lula', 'bolsonaro']
+                'netanyahu', 'milei', 'lula', 'bolsonaro',
+                # Additional politicians and political entities
+                'venezuela', 'pakistan', 'colombia', 'comey', 'starmer',
+                'pope', 'vatican', 'doge', 'department', 'petro',
+                'canada', 'california', 'wisconsin', 'new orleans', 'los angeles',
+                'america', 'nobel', 'kash', 'signal',
+                # Non-English political terms
+                'ايران', 'اسرائيل', 'مدريد', 'باريس', 'irán']
 
     # Sports keywords
     sports = ['nba', 'nfl', 'mlb', 'nhl', 'fifa', 'ufc', 'wwe',
@@ -100,7 +107,11 @@ def assign_category(tag):
               'volleyball', 'swim', 'track and field', 'marathon',
               'batting', 'pitcher', 'homerun', 'slam dunk', 'mvp',
               'heisman', 'ballon', 'mahomes', 'curry', 'giannis',
-              'mbappé', 'mbappe', 'haaland', 'sport']
+              'mbappé', 'mbappe', 'haaland', 'sport',
+              # Additional teams and players
+              'eagles', 'chiefs', 'luka', 'doncic', 'jota', 'diogo',
+              'الاهلي', 'الهلال', 'النصر',  # Arabic sports teams
+              'madrid', 'bayern', 'juventus', 'milan', 'psg']
 
     # Entertainment keywords
     entertainment = ['taylor', 'swift', 'beyonce', 'drake', 'kanye',
@@ -122,7 +133,12 @@ def assign_category(tag):
                      'weeknd', 'sza', 'dua lipa', 'billie',
                      'olivia rodrigo', 'kendrick', 'j cole',
                      'travis scott', 'peso pluma', 'karol g',
-                     'selena', 'jennifer', 'zendaya', 'timothee']
+                     'selena', 'jennifer', 'zendaya', 'timothee',
+                     # Additional celebrities and entertainment
+                     'kimmel', 'gaga', 'lady gaga', 'jennie', 'ozzy',
+                     'fernanda', 'torres', 'papa', 'flow',
+                     'ジークアクス', 'フジテレビ', 'ホワイトデー',  # Japanese entertainment
+                     'freenbeck', 'lingorm', 'wanmae']
 
     # Holiday keywords
     holidays = ['christmas', 'thanksgiving', 'halloween', 'easter',
@@ -133,7 +149,10 @@ def assign_category(tag):
                 'firework', 'parade', 'feast', 'turkey day',
                 'diwali', 'eid', 'ramadan', 'hanukkah', 'kwanzaa',
                 'lunar new year', 'chinese new year', 'april fool',
-                'エイプリルフール', 'バレンタイン', 'クリスマス']
+                'エイプリルフール', 'バレンタイン', 'クリスマス',
+                # Additional holiday variations
+                'mothersday', 'fathersday', 'valentinesday', 'perthsanta',
+                'eidmubarak', 'happy new year']
 
     # Technology keywords
     technology = ['iphone', 'apple', 'google', 'microsoft', 'amazon',
@@ -147,7 +166,10 @@ def assign_category(tag):
                   'launch', 'update', 'bug', 'feature',
                   'internet', 'wifi', '5g', 'chip',
                   'semiconductor', 'quantum', 'machine learning',
-                  'deep learning', 'neural', 'algorithm']
+                  'deep learning', 'neural', 'algorithm',
+                  # Additional tech products and companies
+                  'switch', 'nintendo', 'deepseek', 'appleevent',
+                  'playstation', 'xbox', 'meta', 'twitter', 'x.com']
 
     # Social keywords
     social = ['blacklivesmatter', 'blm', 'metoo', 'lgbtq', 'pride',

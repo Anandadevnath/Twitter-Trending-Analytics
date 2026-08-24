@@ -2,27 +2,27 @@
   "benchmark": [
     {
       "name": "Random Forest",
-      "accuracy": 90.41,
-      "precision": 89.83,
-      "recall": 90.41,
-      "f1_score": 87.12,
-      "latency_ms": 2820.32
+      "accuracy": 88.29,
+      "precision": 86.28,
+      "recall": 88.29,
+      "f1_score": 84.69,
+      "latency_ms": 3055.48
     },
     {
       "name": "Logistic Regression",
-      "accuracy": 72.88,
-      "precision": 89.29,
-      "recall": 72.88,
-      "f1_score": 79.3,
-      "latency_ms": 12439.9
+      "accuracy": 70.43,
+      "precision": 87.38,
+      "recall": 70.43,
+      "f1_score": 76.77,
+      "latency_ms": 14749.36
     },
     {
       "name": "Gradient Boosting",
-      "accuracy": 91.9,
-      "precision": 92.39,
-      "recall": 91.9,
-      "f1_score": 89.93,
-      "latency_ms": 7455.64
+      "accuracy": 89.49,
+      "precision": 89.58,
+      "recall": 89.49,
+      "f1_score": 87.02,
+      "latency_ms": 10452.72
     }
   ],
   "classes": [
@@ -37,64 +37,64 @@
   "confusion_matrices": {
     "Random Forest": [
       [
+        18,
+        0,
+        77,
+        2,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        17,
         9,
-        0,
-        70,
         1,
         0,
         0,
         0
       ],
       [
+        3,
         0,
-        21,
+        2062,
+        0,
+        0,
         6,
-        0,
-        0,
-        0,
         0
       ],
       [
-        0,
-        0,
-        2128,
-        6,
-        0,
         1,
-        0
-      ],
-      [
-        0,
-        0,
-        70,
-        8,
+        1,
+        73,
+        16,
         0,
         0,
         0
       ],
       [
-        0,
+        1,
         0,
         20,
         0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        67,
         2,
         0,
-        0
-      ],
-      [
-        0,
-        0,
-        45,
-        0,
-        0,
-        8,
-        0
-      ],
-      [
-        0,
-        0,
         12,
+        0
+      ],
+      [
         0,
+        0,
+        18,
+        1,
         0,
         0,
         1
@@ -102,78 +102,13 @@
     ],
     "Logistic Regression": [
       [
-        45,
+        60,
         0,
-        12,
-        3,
-        15,
-        0,
-        5
-      ],
-      [
-        0,
-        27,
-        0,
-        0,
-        0,
-        0,
-        0
-      ],
-      [
-        179,
-        6,
-        1612,
-        73,
-        194,
-        5,
-        66
-      ],
-      [
-        9,
-        0,
-        23,
-        28,
-        16,
-        0,
-        2
-      ],
-      [
-        0,
-        0,
-        3,
-        3,
-        13,
-        0,
-        3
-      ],
-      [
-        0,
-        0,
-        25,
-        0,
-        3,
-        25,
-        0
-      ],
-      [
-        0,
-        0,
-        7,
-        1,
-        0,
-        0,
-        5
-      ]
-    ],
-    "Gradient Boosting": [
-      [
         14,
+        12,
+        11,
         0,
-        65,
-        0,
-        0,
-        0,
-        1
+        0
       ],
       [
         0,
@@ -185,46 +120,111 @@
         0
       ],
       [
+        162,
+        7,
+        1515,
+        139,
+        198,
+        1,
+        49
+      ],
+      [
+        8,
         0,
-        3,
-        2121,
+        29,
+        40,
+        9,
         0,
+        5
+      ],
+      [
         4,
         0,
-        7
+        4,
+        3,
+        10,
+        0,
+        0
+      ],
+      [
+        2,
+        0,
+        28,
+        7,
+        3,
+        40,
+        1
+      ],
+      [
+        2,
+        0,
+        10,
+        1,
+        1,
+        0,
+        6
+      ]
+    ],
+    "Gradient Boosting": [
+      [
+        19,
+        0,
+        75,
+        2,
+        1,
+        0,
+        0
       ],
       [
         0,
+        24,
+        3,
         0,
-        62,
-        16,
         0,
         0,
         0
       ],
       [
         0,
-        0,
-        11,
-        0,
-        10,
-        0,
-        1
-      ],
-      [
-        0,
-        0,
-        30,
-        0,
-        0,
-        22,
-        1
-      ],
-      [
-        0,
-        0,
+        1,
+        2054,
+        2,
         8,
         0,
+        6
+      ],
+      [
+        0,
+        0,
+        68,
+        22,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        15,
+        0,
+        6,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        55,
+        0,
+        1,
+        25,
+        0
+      ],
+      [
+        0,
+        0,
+        14,
+        1,
         0,
         0,
         5
@@ -234,83 +234,83 @@
   "global_feature_importance": [
     {
       "feature": "log_rank",
-      "importance": 15.52
+      "importance": 15.735
     },
     {
       "feature": "log_tweets",
-      "importance": 14.539
+      "importance": 14.428
     },
     {
       "feature": "tag_length",
-      "importance": 13.38
+      "importance": 12.708
     },
     {
       "feature": "month",
-      "importance": 9.388
+      "importance": 9.535
     },
     {
       "feature": "year",
-      "importance": 5.281
+      "importance": 5.214
     },
     {
       "feature": "word_count",
-      "importance": 1.796
-    },
-    {
-      "feature": "happy",
-      "importance": 0.791
+      "importance": 1.635
     },
     {
       "feature": "day",
-      "importance": 0.736
+      "importance": 0.75
     },
     {
-      "feature": "apple",
-      "importance": 0.664
-    },
-    {
-      "feature": "appleevent",
-      "importance": 0.641
-    },
-    {
-      "feature": "bitcoin",
-      "importance": 0.477
-    },
-    {
-      "feature": "easter",
-      "importance": 0.456
+      "feature": "happy",
+      "importance": 0.663
     },
     {
       "feature": "mothersday",
-      "importance": 0.423
+      "importance": 0.528
     },
     {
-      "feature": "taylor",
-      "importance": 0.399
+      "feature": "apple",
+      "importance": 0.501
     },
     {
-      "feature": "fathersday",
+      "feature": "appleevent",
+      "importance": 0.468
+    },
+    {
+      "feature": "worldenvironmentday",
+      "importance": 0.418
+    },
+    {
+      "feature": "bitcoin",
+      "importance": 0.412
+    },
+    {
+      "feature": "earthquake",
       "importance": 0.396
     },
     {
-      "feature": "eidmubarak",
-      "importance": 0.375
-    },
-    {
-      "feature": "perthsanta",
-      "importance": 0.363
+      "feature": "pride",
+      "importance": 0.388
     },
     {
       "feature": "worldmentalhealthday",
-      "importance": 0.328
+      "importance": 0.386
     },
     {
-      "feature": "valentinesday",
-      "importance": 0.315
+      "feature": "lingorm",
+      "importance": 0.384
     },
     {
-      "feature": "covid",
-      "importance": 0.31
+      "feature": "mubarak",
+      "importance": 0.381
+    },
+    {
+      "feature": "fathersday",
+      "importance": 0.376
+    },
+    {
+      "feature": "perthsanta",
+      "importance": 0.356
     }
   ],
   "total_samples": 12036,
