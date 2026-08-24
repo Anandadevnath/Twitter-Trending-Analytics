@@ -252,6 +252,12 @@ def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tf
         # When rule-based labeler overrides, boost confidence to 85% to reflect
         # high certainty from keyword matching (the same rules that labeled training data)
         selected_conf = 85.0
+        # Update the probabilities array to reflect the boosted confidence
+        if class_probs:
+            for p in class_probs:
+                if p['category'] == pred_class:
+                    p['confidence'] = 85.0
+                    break
     elif class_probs:
         selected_conf = next((p['confidence'] for p in class_probs if p['category'] == pred_class),
                              class_probs[0]['confidence'])
