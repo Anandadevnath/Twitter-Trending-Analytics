@@ -108,6 +108,12 @@ def assign_category(tag):
               'batting', 'pitcher', 'homerun', 'slam dunk', 'mvp',
               'heisman', 'ballon', 'mahomes', 'curry', 'giannis',
               'mbappé', 'mbappe', 'haaland', 'sport',
+              # Additional globally-recognized athletes
+              'neymar', 'salah', 'benzema', 'modric', 'bruyne',
+              'zidane', 'iniesta', 'serena', 'federer', 'nadal',
+              'djokovic', 'durant', 'jokic', 'embiid', 'tatum',
+              'virat', 'kohli', 'dhoni', 'rohit', 'bumrah',
+              'osaka', 'biles', 'usain', 'verstappen',
               # Additional teams and players
               'eagles', 'chiefs', 'luka', 'doncic', 'jota', 'diogo',
               'الاهلي', 'الهلال', 'النصر',  # Arabic sports teams
