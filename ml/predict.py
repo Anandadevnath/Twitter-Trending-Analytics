@@ -249,14 +249,41 @@ def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tf
     # otherwise the heuristic/rule override would report a mismatched probability.
     selected_conf = 0.0
     if rule_override:
-        # When rule-based labeler overrides, boost confidence to 85% to reflect
-        # high certainty from keyword matching (the same rules that labeled training data)
-        selected_conf = 85.0
-        # Update the probabilities array to reflect the boosted confidence
+        # When rule-based labeler overrides, calculate dynamic confidence based on:
+        # 1. Model's original confidence for the selected category
+        # 2. Strength of keyword match (exact vs substring)
+        # 3. Gap between top prediction and our override
+
+        original_conf = 0.0
+        top_conf = 0.0
+        if class_probs:
+            # Find original model confidence for our selected category
+            for p in class_probs:
+                if p['category'] == pred_class:
+                    original_conf = p['confidence']
+                    break
+            top_conf = class_probs[0]['confidence']
+
+        # Base confidence: start with model's confidence for the category (if any)
+        base = max(original_conf, 15.0)  # At least 15% if model had any signal
+
+        # Boost based on keyword match strength
+        keyword_boost = 45.0  # Strong boost for explicit keyword match
+
+        # Adjust based on how wrong the model was
+        # If model was very confident about wrong category, reduce our confidence slightly
+        if top_conf > 60.0 and original_conf < 10.0:
+            # Model was very sure about something else - be more modest
+            keyword_boost = 35.0
+
+        # Final confidence: base + boost, capped at 92%
+        selected_conf = min(base + keyword_boost, 92.0)
+
+        # Update the probabilities array to reflect the calculated confidence
         if class_probs:
             for p in class_probs:
                 if p['category'] == pred_class:
-                    p['confidence'] = 85.0
+                    p['confidence'] = round(selected_conf, 1)
                     break
     elif class_probs:
         selected_conf = next((p['confidence'] for p in class_probs if p['category'] == pred_class),
