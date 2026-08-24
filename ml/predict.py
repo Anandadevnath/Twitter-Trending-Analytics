@@ -40,19 +40,6 @@ def load_artifacts():
 
     return models, lifespan_regressor, tfidf, scaler, df, all_tag_vecs
 
-def rule_based_category(tag):
-    """
-    Reuse the exact rule-based keyword labeler used to build the training data.
-    When the ML model defaults to "Other", we can trust this label for any tag
-    that matches a known category keyword (e.g. player names, election, etc.).
-    Imported lazily so the API doesn't pay for the preprocessing module unless needed.
-    """
-    try:
-        from preprocess import assign_category
-        return assign_category(tag)
-    except Exception:
-        return 'Other'
-
 def assign_trending_level(tweets):
     if tweets < 100_000:
         return 'Low'
@@ -209,23 +196,6 @@ def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tf
     # Active model prediction
     pred_class, class_probs = predict_single_model(model, X)
 
-    # Rule-based override: for tags matching known category keywords, trust the
-    # rule-based label (same keyword lists used to build the training data).
-    # This catches sparse classes the model never learned properly (player names,
-    # election, worldcup) and corrects mislabeled training data (politics/worldcup confusion).
-    rule_cat = rule_based_category(tag)
-    rule_override = False
-    if rule_cat and rule_cat != "Other":
-        pred_class = rule_cat
-        rule_override = True
-    # Smart category selection: prefer specific categories over "Other" when confidence is close
-    elif pred_class == "Other" and len(class_probs) >= 2:
-        top_conf = class_probs[0]['confidence']
-        second = class_probs[1]
-        # If "Other" wins by less than 15%, and second choice is a specific category, use it
-        if second['category'] != "Other" and (top_conf - second['confidence']) < 15.0:
-            pred_class = second['category']
-
     trending_lvl = assign_trending_level(tweets)
     tone_info = estimate_tone(tag, tweets)
     similar_trends = find_similar_hashtags(tag, tfidf, df, all_tag_vecs=all_tag_vecs, top_k=4)
@@ -245,56 +215,15 @@ def predict_comprehensive(tag, year, tweets, rank, model, lifespan_regressor, tf
             except Exception:
                 pass
 
-    # Confidence must reflect the FINAL selected class, not the original top class,
-    # otherwise the heuristic/rule override would report a mismatched probability.
-    selected_conf = 0.0
-    if rule_override:
-        # When rule-based labeler overrides, calculate dynamic confidence based on:
-        # 1. Model's original confidence for the selected category
-        # 2. Strength of keyword match (exact vs substring)
-        # 3. Gap between top prediction and our override
-
-        original_conf = 0.0
-        top_conf = 0.0
-        if class_probs:
-            # Find original model confidence for our selected category
-            for p in class_probs:
-                if p['category'] == pred_class:
-                    original_conf = p['confidence']
-                    break
-            top_conf = class_probs[0]['confidence']
-
-        # Base confidence: start with model's confidence for the category (if any)
-        base = max(original_conf, 15.0)  # At least 15% if model had any signal
-
-        # Boost based on keyword match strength
-        keyword_boost = 45.0  # Strong boost for explicit keyword match
-
-        # Adjust based on how wrong the model was
-        # If model was very confident about wrong category, reduce our confidence slightly
-        if top_conf > 60.0 and original_conf < 10.0:
-            # Model was very sure about something else - be more modest
-            keyword_boost = 35.0
-
-        # Final confidence: base + boost, capped at 92%
-        selected_conf = min(base + keyword_boost, 92.0)
-
-        # Update the probabilities array to reflect the calculated confidence
-        if class_probs:
-            for p in class_probs:
-                if p['category'] == pred_class:
-                    p['confidence'] = round(selected_conf, 1)
-                    break
-    elif class_probs:
+    if class_probs:
+        # Reflect only trained-model probabilities.
         selected_conf = next((p['confidence'] for p in class_probs if p['category'] == pred_class),
                              class_probs[0]['confidence'])
+    else:
+        selected_conf = 0.0
 
-    # Reorder probabilities so the final selected category is listed first,
-    # keeping the frontend bar chart consistent with the headline category.
-    if class_probs:
-        class_probs = ([p for p in class_probs if p['category'] == pred_class] +
-                       sorted((p for p in class_probs if p['category'] != pred_class),
-                              key=lambda p: p['confidence'], reverse=True))
+    # Keep model probabilities sorted descending.
+    class_probs = sorted(class_probs, key=lambda p: p['confidence'], reverse=True) if class_probs else []
 
     return {
         'category': pred_class,
