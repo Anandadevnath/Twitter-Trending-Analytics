@@ -817,7 +817,7 @@ function Prediction() {
                       )}
                     </td>
                     <td>
-                      {selectedModel === m.name ? (
+                      {result?.active_model === m.name ? (
                         <span style={{ fontSize: '0.75rem', color: '#00df8f', fontWeight: 600 }}>Active</span>
                       ) : (
                         <button
